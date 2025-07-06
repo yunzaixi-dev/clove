@@ -34,9 +34,8 @@ async def verify_api_key(
     valid_keys = settings.api_keys + settings.admin_api_keys
 
     if not valid_keys:
-        # No keys configured, allow all
-        logger.warning("No API keys configured, allowing all requests")
-        return api_key
+        logger.error("No API keys configured, Please configure at least one API key.")
+        raise InvalidAPIKeyError()
 
     if api_key not in valid_keys:
         raise InvalidAPIKeyError()
@@ -54,9 +53,10 @@ async def verify_admin_api_key(
     valid_keys = settings.admin_api_keys
 
     if not valid_keys:
-        # No admin keys configured, allow all
-        logger.warning("No admin API keys configured, allowing all requests")
-        return api_key
+        logger.error(
+            "No admin API keys configured, Please configure at least one admin API key."
+        )
+        raise InvalidAPIKeyError()
 
     if api_key not in valid_keys:
         raise InvalidAPIKeyError()
