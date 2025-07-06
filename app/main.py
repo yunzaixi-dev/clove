@@ -21,7 +21,7 @@ async def lifespan(app: FastAPI):
     configure_logger()
 
     # Load accounts
-    await account_manager.load_accounts()
+    account_manager.load_accounts()
 
     for cookie in settings.cookies:
         await account_manager.add_account(cookie_value=cookie)
@@ -36,7 +36,7 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down Clove...")
 
     # Save accounts
-    await account_manager.save_accounts()
+    account_manager.save_accounts()
 
     # Stop tasks
     await account_manager.stop_task()

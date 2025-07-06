@@ -14,7 +14,7 @@ from app.core.exceptions import (
     ClaudeHttpError,
 )
 from app.models.internal import UploadResponse
-from app.services.account import Account
+from app.core.account import Account
 
 
 class ClaudeWebClient:

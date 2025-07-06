@@ -3,15 +3,15 @@ from datetime import datetime, UTC
 from typing import Optional, Dict, Set
 
 from collections import defaultdict
-import threading
-import json
 from pathlib import Path
 from loguru import logger
+import threading
+import json
 import uuid
 
 from app.core.config import settings
 from app.core.exceptions import NoAccountsAvailableError
-from app.models.account import Account, AccountStatus, AuthType
+from app.core.account import Account, AccountStatus, AuthType
 from app.services.oauth import oauth_authenticator
 
 
@@ -245,7 +245,6 @@ class AccountManager:
         while True:
             try:
                 await self._check_and_recover_accounts()
-                await asyncio.sleep(self._account_task_interval)
             except asyncio.CancelledError:
                 break
             except Exception as e:
@@ -257,8 +256,6 @@ class AccountManager:
                 break
             except Exception as e:
                 logger.error(f"Error in refresh: {e}")
-
-            await asyncio.sleep(self._account_task_interval)
 
     async def _check_and_recover_accounts(self) -> None:
         """Check and recover rate-limited accounts."""
@@ -301,7 +298,7 @@ class AccountManager:
             logger.info(
                 f"Successfully refreshed OAuth token for account: {account.organization_uuid[:8]}..."
             )
-            await self.save_accounts()
+            self.save_accounts()
         else:
             logger.warning(
                 f"Failed to refresh OAuth token for account: {account.organization_uuid[:8]}..."
@@ -367,7 +364,7 @@ class AccountManager:
 
         return status
 
-    async def save_accounts(self) -> None:
+    def save_accounts(self) -> None:
         """Save all accounts to JSON file.
 
         Args:
@@ -388,7 +385,7 @@ class AccountManager:
 
         logger.info(f"Saved {len(accounts_data)} accounts to {accounts_file}")
 
-    async def load_accounts(self) -> None:
+    def load_accounts(self) -> None:
         """Load accounts from JSON file.
 
         Args:

@@ -8,8 +8,8 @@ from urllib.parse import urlparse, parse_qs
 from curl_cffi.requests import AsyncSession
 from loguru import logger
 
-from app.services.account import Account, AuthType
 from app.core.config import settings
+from app.core.account import Account, AuthType
 
 
 class OAuthAuthenticator:

@@ -50,13 +50,20 @@ class Account:
         ):
             self.status = AccountStatus.RATE_LIMITED
             self.resets_at = exc_val.resets_at
+            self.save()
 
         if exc_type is OrganizationDisabledError and isinstance(
             exc_val, OrganizationDisabledError
         ):
             self.status = AccountStatus.INVALID
+            self.save()
 
         return False
+
+    def save(self) -> None:
+        from app.services.account import account_manager
+
+        account_manager.save_accounts()
 
     def to_dict(self) -> dict:
         """Convert Account to dictionary for JSON serialization."""
@@ -89,3 +96,7 @@ class Account:
         account.refresh_token = data.get("refresh_token")
         account.expires_at = data.get("expires_at")
         return account
+
+    def __repr__(self) -> str:
+        """String representation of the Account."""
+        return f"<Account organization_uuid={self.organization_uuid[:8]}... status={self.status.value} auth_type={self.auth_type.value}>"
