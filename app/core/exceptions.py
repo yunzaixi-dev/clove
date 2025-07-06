@@ -101,6 +101,18 @@ class OrganizationDisabledError(AppError):
         )
 
 
+class InvalidModelNameError(AppError):
+    def __init__(self, model_name: str, context: Optional[Dict[str, Any]] = None):
+        _context = context.copy() if context else {}
+        _context["model_name"] = model_name
+        super().__init__(
+            error_code=400123,
+            message_key="claudeClient.invalidModelName",
+            status_code=400,
+            context=_context,
+        )
+
+
 class ClaudeHttpError(AppError):
     def __init__(
         self,

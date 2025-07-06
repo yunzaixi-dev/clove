@@ -11,7 +11,8 @@
     "claudeRateLimited": "Claude AI rate limit exceeded. Please try again after {resets_at}.",
     "cloudflareBlocked": "Request blocked by Cloudflare. Please check your IP address.",
     "organizationDisabled": "Your Claude AI account has been disabled.",
-    "httpError": "HTTP error occurred when calling Claude AI: {error_type} - {error_message} (Status: {status_code})"
+    "httpError": "HTTP error occurred when calling Claude AI: {error_type} - {error_message} (Status: {status_code})",
+    "invalidModelName": "Invalid model name provided. Please ensure you have access to model {model_name}."
   },
   "messageProcessor": {
     "noValidMessages": "No valid messages found in the request.",

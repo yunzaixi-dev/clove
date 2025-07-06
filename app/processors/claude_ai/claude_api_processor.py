@@ -9,7 +9,11 @@ from app.models.claude import TextContent
 from app.processors.base import BaseProcessor
 from app.processors.claude_ai import ClaudeAIContext
 from app.services.account import account_manager
-from app.core.exceptions import ClaudeRateLimitedError, NoAccountsAvailableError
+from app.core.exceptions import (
+    ClaudeRateLimitedError,
+    InvalidModelNameError,
+    NoAccountsAvailableError,
+)
 from app.core.config import settings
 
 
@@ -70,6 +74,13 @@ class ClaudeAPIProcessor(BaseProcessor):
                     logger.warning(f"Rate limited by Claude API, resets at {next_hour}")
                     raise ClaudeRateLimitedError(resets_at=next_hour)
 
+                if (
+                    response.status_code == 400
+                    and response.json().get("error", {}).get("message")
+                    == "system: Invalid model name"
+                ):
+                    raise InvalidModelNameError(context.messages_api_request.model)
+
                 if response.status_code >= 400:
                     logger.error(
                         f"Claude API error: {response.status_code} - {response.text}"
@@ -92,7 +103,7 @@ class ClaudeAPIProcessor(BaseProcessor):
                 context.metadata["stop_pipeline"] = True
                 logger.info("Successfully processed request via Claude API")
 
-        except NoAccountsAvailableError:
+        except (NoAccountsAvailableError, InvalidModelNameError):
             logger.debug("No accounts available for Claude API, continuing pipeline")
 
         return context

@@ -11,7 +11,8 @@
     "claudeRateLimited": "Claude API 速率限制已超出。请在 {resets_at} 后重试。",
     "cloudflareBlocked": "请求被 Cloudflare 阻止。请检查您的连接。",
     "organizationDisabled": "您的 Claude AI 账户已被禁用。",
-    "httpError": "请求 Claude AI 时发生 HTTP 错误：{error_type} - {error_message}（状态码：{status_code}）"
+    "httpError": "请求 Claude AI 时发生 HTTP 错误：{error_type} - {error_message}（状态码：{status_code}）",
+    "invalidModelName": "提供的模型名称无效。请确保您有权访问 {model_name} 模型。"
   },
   "messageProcessor": {
     "noValidMessages": "请求中未找到有效消息。",
