@@ -80,18 +80,18 @@ async def update_settings(_: AdminAuthDep, updates: SettingsUpdate) -> Settings:
     if os.path.exists(config_path):
         try:
             with open(config_path, "r", encoding="utf-8") as f:
-                config_data = json.load(f)
+                config_data = SettingsUpdate.model_validate_json(f.read())
         except (json.JSONDecodeError, IOError):
-            config_data = {}
+            config_data = SettingsUpdate()
     else:
-        config_data = {}
+        config_data = SettingsUpdate()
 
     update_dict = updates.model_dump(exclude_unset=True)
-    config_data.update(update_dict)
+    config_data = config_data.model_copy(update=update_dict)
 
     try:
         with open(config_path, "w", encoding="utf-8") as f:
-            json.dump(config_data, f, indent=2)
+            f.write(config_data.model_dump_json())
     except IOError as e:
         raise HTTPException(status_code=500, detail=f"Failed to save config: {str(e)}")
 
