@@ -1,3 +1,4 @@
+import json
 from curl_cffi import Response
 from curl_cffi.requests import AsyncSession
 from datetime import datetime, timedelta, UTC
@@ -10,6 +11,7 @@ from app.processors.base import BaseProcessor
 from app.processors.claude_ai import ClaudeAIContext
 from app.services.account import account_manager
 from app.core.exceptions import (
+    ClaudeHttpError,
     ClaudeRateLimitedError,
     InvalidModelNameError,
     NoAccountsAvailableError,
@@ -74,18 +76,34 @@ class ClaudeAPIProcessor(BaseProcessor):
                     logger.warning(f"Rate limited by Claude API, resets at {next_hour}")
                     raise ClaudeRateLimitedError(resets_at=next_hour)
 
-                if (
-                    response.status_code == 400
-                    and response.json().get("error", {}).get("message")
-                    == "system: Invalid model name"
-                ):
-                    raise InvalidModelNameError(context.messages_api_request.model)
-
                 if response.status_code >= 400:
+                    error_content = ""
+                    async for chunk in response.aiter_content():
+                        error_content += chunk.decode("utf-8")
+
+                    try:
+                        error_data = json.loads(error_content)
+                    except json.JSONDecodeError:
+                        error_data = {}
+
+                    if (
+                        response.status_code == 400
+                        and error_data.get("error", {}).get("message")
+                        == "system: Invalid model name"
+                    ):
+                        raise InvalidModelNameError(context.messages_api_request.model)
+
                     logger.error(
-                        f"Claude API error: {response.status_code} - {response.text}"
+                        f"Claude API error: {response.status_code} - {error_data}"
                     )
-                    return context
+                    raise ClaudeHttpError(
+                        url=self.messages_api_url,
+                        status_code=response.status_code,
+                        error_type=error_data.get("error", {}).get("type", "unknown"),
+                        error_message=error_data.get("error", {}).get(
+                            "message", "Unknown error"
+                        ),
+                    )
 
                 async def stream_response():
                     async for chunk in response.aiter_content():
