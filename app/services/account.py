@@ -428,7 +428,7 @@ class AccountManager:
             for organization_uuid, account in self._accounts.items()
         }
 
-        with open(accounts_file, "w") as f:
+        with open(accounts_file, "w", encoding="utf-8") as f:
             json.dump(accounts_data, f, indent=2)
 
         logger.info(f"Saved {len(accounts_data)} accounts to {accounts_file}")
@@ -447,7 +447,7 @@ class AccountManager:
             return
 
         try:
-            with open(accounts_file, "r") as f:
+            with open(accounts_file, "r", encoding="utf-8") as f:
                 accounts_data = json.load(f)
 
             for organization_uuid, account_data in accounts_data.items():

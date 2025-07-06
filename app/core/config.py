@@ -48,7 +48,7 @@ class Settings(BaseSettings):
 
         if os.path.exists(config_path):
             try:
-                with open(config_path, "r") as f:
+                with open(config_path, "r", encoding="utf-8") as f:
                     config_data = json.load(f)
                     return config_data
             except (json.JSONDecodeError, IOError):
