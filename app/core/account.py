@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import List, Optional
 from enum import Enum
 from datetime import datetime
 
@@ -23,10 +23,12 @@ class Account:
     def __init__(
         self,
         organization_uuid: str,
+        capabilities: Optional[List[str]] = None,
         cookie_value: Optional[str] = None,
         auth_type: AuthType = AuthType.COOKIE_ONLY,
     ):
         self.organization_uuid = organization_uuid
+        self.capabilities = capabilities
         self.cookie_value = cookie_value
         self.status = AccountStatus.VALID
         self.auth_type = auth_type
@@ -69,6 +71,7 @@ class Account:
         """Convert Account to dictionary for JSON serialization."""
         return {
             "organization_uuid": self.organization_uuid,
+            "capabilities": self.capabilities,
             "cookie_value": self.cookie_value,
             "status": self.status.value,
             "auth_type": self.auth_type.value,
@@ -84,6 +87,7 @@ class Account:
         """Create Account from dictionary."""
         account = cls(
             organization_uuid=data["organization_uuid"],
+            capabilities=data.get("capabilities"),
             cookie_value=data.get("cookie_value"),
             auth_type=AuthType(data["auth_type"]),
         )
@@ -96,6 +100,27 @@ class Account:
         account.refresh_token = data.get("refresh_token")
         account.expires_at = data.get("expires_at")
         return account
+
+    @property
+    def is_pro(self) -> bool:
+        """Check if account has pro capabilities."""
+        if not self.capabilities:
+            return False
+
+        pro_keywords = ["pro", "enterprise", "raven", "max"]
+        return any(
+            keyword in cap.lower()
+            for cap in self.capabilities
+            for keyword in pro_keywords
+        )
+
+    @property
+    def is_max(self) -> bool:
+        """Check if account has max capabilities."""
+        if not self.capabilities:
+            return False
+
+        return any("max" in cap.lower() for cap in self.capabilities)
 
     def __repr__(self) -> str:
         """String representation of the Account."""

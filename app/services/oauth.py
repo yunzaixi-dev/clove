@@ -2,7 +2,7 @@ import base64
 import hashlib
 import secrets
 import time
-from typing import Dict, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 from urllib.parse import urlparse, parse_qs
 
 from curl_cffi.requests import AsyncSession
@@ -65,8 +65,10 @@ class OAuthAuthenticator:
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
         }
 
-    async def get_organization_uuid(self, cookie: str) -> Optional[str]:
-        """Get organization UUID."""
+    async def get_organization_info(
+        self, cookie: str
+    ) -> Optional[Tuple[str, List[str]]]:
+        """Get organization UUID and capabilities."""
         await self.initialize()
 
         url = f"{self.claude_endpoint}/api/organizations"
@@ -82,8 +84,9 @@ class OAuthAuthenticator:
             org_data = response.json()
             if org_data and len(org_data) > 0:
                 organization_uuid = org_data[0].get("uuid")
+                capabilities = org_data[0].get("capabilities", [])
                 logger.debug(f"Got organization UUID: {organization_uuid}")
-                return organization_uuid
+                return organization_uuid, capabilities
 
         except Exception as e:
             logger.error(f"Error getting organization UUID: {e}")
@@ -237,7 +240,7 @@ class OAuthAuthenticator:
 
         try:
             # Get organization UUID
-            org_uuid = await self.get_organization_uuid(account.cookie_value)
+            org_uuid, _ = await self.get_organization_info(account.cookie_value)
             if not org_uuid:
                 logger.error("Failed to get organization UUID")
                 return False

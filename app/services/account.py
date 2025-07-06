@@ -1,6 +1,6 @@
 import asyncio
 from datetime import datetime, UTC
-from typing import Optional, Dict, Set
+from typing import List, Optional, Dict, Set
 
 from collections import defaultdict
 from pathlib import Path
@@ -50,6 +50,7 @@ class AccountManager:
         self,
         cookie_value: Optional[str] = None,
         organization_uuid: Optional[str] = None,
+        capabilities: Optional[List[str]] = None,
     ) -> Account:
         """Add a new account to the manager.
 
@@ -60,8 +61,11 @@ class AccountManager:
         if cookie_value and cookie_value in self._cookie_to_uuid:
             return self._accounts[self._cookie_to_uuid[cookie_value]]
 
-        if cookie_value and not organization_uuid:
-            fetched_uuid = await oauth_authenticator.get_organization_uuid(cookie_value)
+        if cookie_value and (not organization_uuid or not capabilities):
+            (
+                fetched_uuid,
+                capabilities,
+            ) = await oauth_authenticator.get_organization_info(cookie_value)
             if fetched_uuid:
                 organization_uuid = fetched_uuid
 
@@ -81,7 +85,12 @@ class AccountManager:
 
         # Create new account
         auth_type = AuthType.COOKIE_ONLY if cookie_value else AuthType.OAUTH_ONLY
-        account = Account(organization_uuid, cookie_value, auth_type)
+        account = Account(
+            organization_uuid=organization_uuid,
+            capabilities=capabilities,
+            cookie_value=cookie_value,
+            auth_type=auth_type,
+        )
         self._accounts[organization_uuid] = account
 
         if cookie_value:
@@ -245,17 +254,13 @@ class AccountManager:
         while True:
             try:
                 await self._check_and_recover_accounts()
-            except asyncio.CancelledError:
-                break
-            except Exception as e:
-                logger.error(f"Error in recovery: {e}")
-
-            try:
                 await self._check_and_refresh_accounts()
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                logger.error(f"Error in refresh: {e}")
+                logger.error(f"Error in task loop: {e}")
+            finally:
+                await asyncio.sleep(self._account_task_interval)
 
     async def _check_and_recover_accounts(self) -> None:
         """Check and recover rate-limited accounts."""
