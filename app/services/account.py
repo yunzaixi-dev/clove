@@ -130,13 +130,16 @@ class AccountManager:
     async def get_account_for_session(
         self,
         session_id: str,
+        is_pro: Optional[bool] = None,
+        is_max: Optional[bool] = None,
     ) -> Account:
         """
         Get an available account for the session with load balancing.
 
         Args:
             session_id: Unique identifier for the session
-            auth_type: Filter by authentication type(s). None means any type.
+            is_pro: Filter by pro capability. None means any.
+            is_max: Filter by max capability. None means any.
 
         Returns:
             Account instance if available
@@ -162,6 +165,12 @@ class AccountManager:
 
             # Filter by auth type if specified
             if account.auth_type not in [AuthType.BOTH, AuthType.COOKIE_ONLY]:
+                continue
+
+            # Filter by capabilities if specified
+            if is_pro is not None and account.is_pro != is_pro:
+                continue
+            if is_max is not None and account.is_max != is_max:
                 continue
 
             session_count = len(self._account_sessions[organization_uuid])
@@ -194,12 +203,20 @@ class AccountManager:
 
         raise NoAccountsAvailableError()
 
-    async def get_account_for_oauth(self) -> Account:
+    async def get_account_for_oauth(
+        self,
+        is_pro: Optional[bool] = None,
+        is_max: Optional[bool] = None,
+    ) -> Account:
         """
         Get an available account for OAuth authentication.
 
+        Args:
+            is_pro: Filter by pro capability. None means any.
+            is_max: Filter by max capability. None means any.
+
         Returns:
-            Account instance if available, None otherwise
+            Account instance if available
         """
         earliest_account = None
         earliest_last_used = None
@@ -209,6 +226,12 @@ class AccountManager:
                 continue
 
             if account.auth_type not in [AuthType.OAUTH_ONLY, AuthType.BOTH]:
+                continue
+
+            # Filter by capabilities if specified
+            if is_pro is not None and account.is_pro != is_pro:
+                continue
+            if is_max is not None and account.is_max != is_max:
                 continue
 
             if earliest_last_used is None or account.last_used < earliest_last_used:
