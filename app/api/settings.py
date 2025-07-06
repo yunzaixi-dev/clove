@@ -14,7 +14,7 @@ class SettingsRead(BaseModel):
     api_keys: List[str]
     admin_api_keys: List[str]
 
-    proxy_url: HttpUrl | None
+    proxy_url: str | None
 
     claude_ai_url: HttpUrl
     claude_api_baseurl: HttpUrl
@@ -40,7 +40,7 @@ class SettingsUpdate(BaseModel):
     api_keys: List[str] | None = None
     admin_api_keys: List[str] | None = None
 
-    proxy_url: HttpUrl | None = None
+    proxy_url: str | None = None
 
     claude_ai_url: HttpUrl | None = None
     claude_api_baseurl: HttpUrl | None = None
@@ -66,14 +66,12 @@ router = APIRouter(prefix="/admin/settings", tags=["Settings Management"])
 @router.get("", response_model=SettingsRead)
 async def get_settings(_: AdminAuthDep) -> Settings:
     """Get current settings."""
-    # Get settings that can be modified
     return settings
 
 
 @router.put("", response_model=SettingsUpdate)
 async def update_settings(_: AdminAuthDep, updates: SettingsUpdate) -> Settings:
     """Update settings and save to config.json."""
-    # Get current config from file if exists
     config_path = os.path.join(settings.data_folder, "config.json")
     os.makedirs(settings.data_folder, exist_ok=True)
 
@@ -91,7 +89,7 @@ async def update_settings(_: AdminAuthDep, updates: SettingsUpdate) -> Settings:
 
     try:
         with open(config_path, "w", encoding="utf-8") as f:
-            f.write(config_data.model_dump_json())
+            f.write(config_data.model_dump_json(exclude_unset=True))
     except IOError as e:
         raise HTTPException(status_code=500, detail=f"Failed to save config: {str(e)}")
 
