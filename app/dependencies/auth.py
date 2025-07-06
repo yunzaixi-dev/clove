@@ -31,7 +31,7 @@ async def verify_api_key(
     api_key: APIKeyDep,
 ) -> str:
     # Verify against configured keys
-    valid_keys = settings.api_keys
+    valid_keys = settings.api_keys + settings.admin_api_keys
 
     if not valid_keys:
         # No keys configured, allow all
@@ -45,3 +45,23 @@ async def verify_api_key(
 
 
 AuthDep = Annotated[str, Depends(verify_api_key)]
+
+
+async def verify_admin_api_key(
+    api_key: APIKeyDep,
+) -> str:
+    # Verify against configured admin keys
+    valid_keys = settings.admin_api_keys
+
+    if not valid_keys:
+        # No admin keys configured, allow all
+        logger.warning("No admin API keys configured, allowing all requests")
+        return api_key
+
+    if api_key not in valid_keys:
+        raise InvalidAPIKeyError()
+
+    return api_key
+
+
+AdminAuthDep = Annotated[str, Depends(verify_admin_api_key)]

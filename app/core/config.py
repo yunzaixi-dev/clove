@@ -43,6 +43,11 @@ class Settings(BaseSettings):
         env="API_KEYS",
         description="Comma-separated list of API keys",
     )
+    admin_api_keys: List[str] | str = Field(
+        default_factory=list,
+        env="ADMIN_API_KEYS",
+        description="Comma-separated list of admin API keys",
+    )
 
     # Claude URLs
     claude_ai_url: HttpUrl = Field(default="https://claude.ai", env="CLAUDE_AI_URL")
