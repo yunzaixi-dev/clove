@@ -1,0 +1,169 @@
+import os
+from typing import Optional, List
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field, HttpUrl, field_validator
+
+
+class Settings(BaseSettings):
+    """Application settings with environment variable support."""
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_ignore_empty=True,
+        extra="ignore",
+    )
+
+    # Server settings
+    host: str = Field(default="0.0.0.0", env="HOST")
+    port: int = Field(default=8000, env="PORT")
+
+    # Application configuration
+    data_folder: str = Field(
+        default="data",
+        env="DATA_FOLDER",
+        description="Folder path for storing persistent data (accounts, etc.)",
+    )
+    locales_folder: str = Field(
+        default=os.path.split(os.path.realpath(__file__))[0] + "/../locales",
+        env="LOCALES_FOLDER",
+        description="Folder path for storing translation files",
+    )
+    default_language: str = Field(
+        default="en",
+        env="DEFAULT_LANGUAGE",
+        description="Default language code for translations",
+    )
+
+    # Proxy settings
+    proxy_url: Optional[str] = Field(default=None, env="PROXY_URL")
+
+    # API Keys
+    api_keys: List[str] | str = Field(
+        default_factory=list,
+        env="API_KEYS",
+        description="Comma-separated list of API keys",
+    )
+
+    # Claude URLs
+    claude_ai_url: HttpUrl = Field(default="https://claude.ai", env="CLAUDE_AI_URL")
+    claude_api_baseurl: HttpUrl = Field(
+        default="https://api.anthropic.com", env="CLAUDE_API_BASEURL"
+    )
+
+    # Cookies
+    cookies: List[str] | str = Field(
+        default_factory=list,
+        env="COOKIES",
+        description="Comma-separated list of Claude.ai cookies",
+    )
+
+    # Content processing
+    custom_prompt: Optional[str] = Field(default=None, env="CUSTOM_PROMPT")
+    use_real_roles: bool = Field(default=True, env="USE_REAL_ROLES")
+    human_name: str = Field(default="Human", env="CUSTOM_HUMAN_NAME")
+    assistant_name: str = Field(default="Assistant", env="CUSTOM_ASSISTANT_NAME")
+    pad_tokens: List[str] = Field(default_factory=list, env="PAD_TOKENS")
+    padtxt_length: int = Field(default=0, env="PADTXT_LENGTH")
+    allow_external_images: bool = Field(
+        default=False,
+        env="ALLOW_EXTERNAL_IMAGES",
+        description="Allow downloading images from external URLs",
+    )
+
+    # Request settings
+    request_timeout: int = Field(default=60, env="REQUEST_TIMEOUT")
+
+    # Feature flags
+    preserve_chats: bool = Field(default=False, env="PRESERVE_CHATS")
+
+    # Logging
+    log_level: str = Field(default="INFO", env="LOG_LEVEL")
+    log_to_file: bool = Field(
+        default=False, env="LOG_TO_FILE", description="Enable logging to file"
+    )
+    log_file_path: str = Field(
+        default="logs/app.log", env="LOG_FILE_PATH", description="Log file path"
+    )
+    log_file_rotation: str = Field(
+        default="10 MB",
+        env="LOG_FILE_ROTATION",
+        description="Log file rotation (e.g., '10 MB', '1 day', '1 week')",
+    )
+    log_file_retention: str = Field(
+        default="7 days",
+        env="LOG_FILE_RETENTION",
+        description="Log file retention (e.g., '7 days', '1 month')",
+    )
+    log_file_compression: str = Field(
+        default="zip",
+        env="LOG_FILE_COMPRESSION",
+        description="Log file compression format",
+    )
+
+    # Session management settings
+    session_timeout: int = Field(
+        default=300,
+        env="SESSION_TIMEOUT",
+        description="Session idle timeout in seconds",
+    )
+    session_cleanup_interval: int = Field(
+        default=30,
+        env="SESSION_CLEANUP_INTERVAL",
+        description="Interval for cleaning up expired sessions in seconds",
+    )
+    max_sessions_per_cookie: int = Field(
+        default=3,
+        env="MAX_SESSIONS_PER_COOKIE",
+        description="Maximum number of concurrent sessions per cookie",
+    )
+
+    # Account management settings
+    account_task_interval: int = Field(
+        default=60,
+        env="ACCOUNT_TASK_INTERVAL",
+        description="Interval for account management task in seconds",
+    )
+
+    # Tool call settings
+    tool_call_timeout: int = Field(
+        default=300,
+        env="TOOL_CALL_TIMEOUT",
+        description="Timeout for pending tool calls in seconds",
+    )
+    tool_call_cleanup_interval: int = Field(
+        default=60,
+        env="TOOL_CALL_CLEANUP_INTERVAL",
+        description="Interval for cleaning up expired tool calls in seconds",
+    )
+
+    # Claude OAuth settings
+    oauth_client_id: str = Field(
+        default="9d1c250a-e61b-44d9-88ed-5944d1962f5e",
+        env="OAUTH_CLIENT_ID",
+        description="OAuth client ID for Claude authentication",
+    )
+    oauth_authorize_url: str = Field(
+        default="https://claude.ai/v1/oauth/{organization_uuid}/authorize",
+        env="OAUTH_AUTHORIZE_URL",
+        description="OAuth authorization endpoint URL template",
+    )
+    oauth_token_url: str = Field(
+        default="https://console.anthropic.com/v1/oauth/token",
+        env="OAUTH_TOKEN_URL",
+        description="OAuth token exchange endpoint URL",
+    )
+    oauth_redirect_uri: str = Field(
+        default="https://console.anthropic.com/oauth/code/callback",
+        env="OAUTH_REDIRECT_URI",
+        description="OAuth redirect URI for authorization flow",
+    )
+
+    @field_validator("api_keys", "cookies")
+    def parse_comma_separated(cls, v: str | List[str]) -> List[str]:
+        """Parse comma-separated string."""
+        if isinstance(v, str):
+            return [key.strip() for key in v.split(",") if key.strip()]
+        return v
+
+
+settings = Settings()
