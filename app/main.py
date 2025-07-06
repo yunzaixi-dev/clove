@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.claude import router as claude_router
 from app.api.accounts import router as accounts_router
 from app.api.settings import router as settings_router
+from app.api.statistics import router as statistics_router
 from app.core.config import settings
 from app.core.error_handler import app_exception_handler
 from app.core.exceptions import AppError
@@ -65,19 +66,10 @@ app.add_middleware(
 app.include_router(claude_router)
 app.include_router(accounts_router)
 app.include_router(settings_router)
+app.include_router(statistics_router)
 
 # Exception handlers
 app.add_exception_handler(AppError, app_exception_handler)
-
-
-# Root endpoint
-@app.get("/")
-async def root():
-    """Root endpoint."""
-    return {
-        "message": "Clove",
-        "version": "0.1.0",
-    }
 
 
 # Health check
@@ -85,10 +77,7 @@ async def root():
 async def health():
     """Health check endpoint."""
     stats = await account_manager.get_status()
-    return {
-        "status": "healthy" if stats["valid_accounts"] > 0 else "degraded",
-        "accounts": stats,
-    }
+    return {"status": "healthy" if stats["valid_accounts"] > 0 else "degraded"}
 
 
 if __name__ == "__main__":
