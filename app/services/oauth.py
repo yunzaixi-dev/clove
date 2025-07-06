@@ -266,6 +266,7 @@ class OAuthAuthenticator:
             account.refresh_token = token_data["refresh_token"]
             account.expires_at = time.time() + token_data["expires_in"]
             account.auth_type = AuthType.BOTH
+            account.save()
 
             logger.info(
                 f"Successfully authenticated account with OAuth: {account.organization_uuid[:8]}..."
@@ -292,6 +293,7 @@ class OAuthAuthenticator:
         account.access_token = token_data["access_token"]
         account.refresh_token = token_data["refresh_token"]
         account.expires_at = time.time() + token_data["expires_in"]
+        account.save()
 
         logger.info(
             f"Successfully refreshed OAuth token for account: {account.organization_uuid[:8]}..."

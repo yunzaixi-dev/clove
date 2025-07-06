@@ -92,6 +92,7 @@ class AccountManager:
             auth_type=auth_type,
         )
         self._accounts[organization_uuid] = account
+        self.save_accounts()
 
         if cookie_value:
             self._cookie_to_uuid[cookie_value] = organization_uuid
@@ -126,6 +127,7 @@ class AccountManager:
                 del self._account_sessions[organization_uuid]
 
             logger.info(f"Removed account: {organization_uuid[:8]}...")
+            self.save_accounts()
 
     async def get_account_for_session(
         self,
@@ -326,7 +328,6 @@ class AccountManager:
             logger.info(
                 f"Successfully refreshed OAuth token for account: {account.organization_uuid[:8]}..."
             )
-            self.save_accounts()
         else:
             logger.warning(
                 f"Failed to refresh OAuth token for account: {account.organization_uuid[:8]}..."
@@ -336,6 +337,7 @@ class AccountManager:
             account.access_token = None
             account.refresh_token = None
             account.expires_at = None
+            self.save_accounts()
 
     async def _attempt_oauth_authentication(self, account: Account) -> None:
         """Attempt OAuth authentication for an account."""
