@@ -1,6 +1,7 @@
 from typing import List, Optional
 from enum import Enum
 from datetime import datetime
+from dataclasses import dataclass
 
 from app.core.exceptions import ClaudeRateLimitedError, OrganizationDisabledError
 
@@ -15,6 +16,32 @@ class AuthType(str, Enum):
     COOKIE_ONLY = "cookie_only"
     OAUTH_ONLY = "oauth_only"
     BOTH = "both"
+
+
+@dataclass
+class OAuthToken:
+    """Encapsulates OAuth credentials for an account."""
+
+    access_token: str
+    refresh_token: str
+    expires_at: float  # Unix timestamp
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary for JSON serialization."""
+        return {
+            "access_token": self.access_token,
+            "refresh_token": self.refresh_token,
+            "expires_at": self.expires_at,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "OAuthToken":
+        """Create from dictionary."""
+        return cls(
+            access_token=data["access_token"],
+            refresh_token=data["refresh_token"],
+            expires_at=data["expires_at"],
+        )
 
 
 class Account:
@@ -34,11 +61,7 @@ class Account:
         self.auth_type = auth_type
         self.last_used = datetime.now()
         self.resets_at: Optional[datetime] = None
-
-        # OAuth fields
-        self.access_token: Optional[str] = None
-        self.refresh_token: Optional[str] = None
-        self.expires_at: Optional[float] = None
+        self.oauth_token: Optional[OAuthToken] = None
 
     def __enter__(self) -> "Account":
         """Enter the context manager."""
@@ -77,9 +100,7 @@ class Account:
             "auth_type": self.auth_type.value,
             "last_used": self.last_used.isoformat(),
             "resets_at": self.resets_at.isoformat() if self.resets_at else None,
-            "access_token": self.access_token,
-            "refresh_token": self.refresh_token,
-            "expires_at": self.expires_at,
+            "oauth_token": self.oauth_token.to_dict() if self.oauth_token else None,
         }
 
     @classmethod
@@ -96,9 +117,10 @@ class Account:
         account.resets_at = (
             datetime.fromisoformat(data["resets_at"]) if data["resets_at"] else None
         )
-        account.access_token = data.get("access_token")
-        account.refresh_token = data.get("refresh_token")
-        account.expires_at = data.get("expires_at")
+
+        if "oauth_token" in data and data["oauth_token"]:
+            account.oauth_token = OAuthToken.from_dict(data["oauth_token"])
+
         return account
 
     @property

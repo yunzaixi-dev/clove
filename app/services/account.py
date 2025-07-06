@@ -311,10 +311,11 @@ class AccountManager:
         for account in self._accounts.values():
             if (
                 account.auth_type in [AuthType.OAUTH_ONLY, AuthType.BOTH]
-                and account.refresh_token
-                and account.expires_at
+                and account.oauth_token
+                and account.oauth_token.refresh_token
+                and account.oauth_token.expires_at
             ):
-                if account.expires_at - current_timestamp < 300:
+                if account.oauth_token.expires_at - current_timestamp < 300:
                     asyncio.create_task(self._refresh_account_token(account))
 
     async def _refresh_account_token(self, account: Account) -> None:
@@ -334,9 +335,7 @@ class AccountManager:
             )
             # Downgrade to cookie-only if refresh fails
             account.auth_type = AuthType.COOKIE_ONLY
-            account.access_token = None
-            account.refresh_token = None
-            account.expires_at = None
+            account.oauth_token = None
             self.save_accounts()
 
     async def _attempt_oauth_authentication(self, account: Account) -> None:
@@ -388,7 +387,7 @@ class AccountManager:
                 "resets_at": account.resets_at.isoformat()
                 if account.resets_at
                 else None,
-                "has_oauth": account.access_token is not None,
+                "has_oauth": account.oauth_token is not None,
             }
             status["accounts"].append(account_info)
 

@@ -56,7 +56,7 @@ class ClaudeAPIProcessor(BaseProcessor):
 
             with account:
                 request_json = self._prepare_request_json(context)
-                headers = self._prepare_headers(account.access_token)
+                headers = self._prepare_headers(account.oauth_token.access_token)
 
                 session = AsyncSession(
                     proxy=settings.proxy_url,

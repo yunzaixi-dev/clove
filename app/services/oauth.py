@@ -9,7 +9,7 @@ from curl_cffi.requests import AsyncSession
 from loguru import logger
 
 from app.core.config import settings
-from app.core.account import Account, AuthType
+from app.core.account import Account, AuthType, OAuthToken
 
 
 class OAuthAuthenticator:
@@ -262,9 +262,11 @@ class OAuthAuthenticator:
                 return False
 
             # Update account with OAuth tokens
-            account.access_token = token_data["access_token"]
-            account.refresh_token = token_data["refresh_token"]
-            account.expires_at = time.time() + token_data["expires_in"]
+            account.oauth_token = OAuthToken(
+                access_token=token_data["access_token"],
+                refresh_token=token_data["refresh_token"],
+                expires_at=time.time() + token_data["expires_in"],
+            )
             account.auth_type = AuthType.BOTH
             account.save()
 
@@ -282,17 +284,19 @@ class OAuthAuthenticator:
         Refresh OAuth token for an account.
         Returns True if successful, False otherwise.
         """
-        if not account.refresh_token:
+        if not account.oauth_token or not account.oauth_token.refresh_token:
             logger.error("Account has no refresh token")
             return False
 
-        token_data = await self.refresh_access_token(account.refresh_token)
+        token_data = await self.refresh_access_token(account.oauth_token.refresh_token)
         if not token_data:
             return False
 
-        account.access_token = token_data["access_token"]
-        account.refresh_token = token_data["refresh_token"]
-        account.expires_at = time.time() + token_data["expires_in"]
+        account.oauth_token = OAuthToken(
+            access_token=token_data["access_token"],
+            refresh_token=token_data["refresh_token"],
+            expires_at=time.time() + token_data["expires_in"],
+        )
         account.save()
 
         logger.info(
