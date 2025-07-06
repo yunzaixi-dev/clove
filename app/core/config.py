@@ -1,17 +1,60 @@
 import os
-from typing import Optional, List
+import json
+from typing import Optional, List, Dict, Any
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field, HttpUrl, field_validator
 
 
 class Settings(BaseSettings):
-    """Application settings with environment variable support."""
+    """Application settings with environment variable and JSON config support."""
 
     model_config = SettingsConfigDict(
         env_file=".env",
         env_ignore_empty=True,
         extra="ignore",
     )
+
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls,
+        init_settings,
+        env_settings,
+        dotenv_settings,
+        file_secret_settings,
+    ):
+        """Customize settings sources to add JSON config support.
+
+        Priority order (highest to lowest):
+        1. JSON config file
+        2. Environment variables
+        3. .env file
+        4. Default values
+        """
+        return (
+            init_settings,
+            cls._json_config_settings,
+            env_settings,
+            dotenv_settings,
+            file_secret_settings,
+        )
+
+    @classmethod
+    def _json_config_settings(cls) -> Dict[str, Any]:
+        """Load settings from JSON config file in data_folder."""
+        # First get data_folder from env or default
+        data_folder = os.environ.get("DATA_FOLDER", "data")
+        config_path = os.path.join(data_folder, "config.json")
+
+        if os.path.exists(config_path):
+            try:
+                with open(config_path, "r") as f:
+                    config_data = json.load(f)
+                    return config_data
+            except (json.JSONDecodeError, IOError):
+                # If there's an error reading the JSON, just return empty dict
+                return {}
+        return {}
 
     # Server settings
     host: str = Field(default="0.0.0.0", env="HOST")
@@ -67,7 +110,7 @@ class Settings(BaseSettings):
     use_real_roles: bool = Field(default=True, env="USE_REAL_ROLES")
     human_name: str = Field(default="Human", env="CUSTOM_HUMAN_NAME")
     assistant_name: str = Field(default="Assistant", env="CUSTOM_ASSISTANT_NAME")
-    pad_tokens: List[str] = Field(default_factory=list, env="PAD_TOKENS")
+    pad_tokens: List[str] | str = Field(default_factory=list, env="PAD_TOKENS")
     padtxt_length: int = Field(default=0, env="PADTXT_LENGTH")
     allow_external_images: bool = Field(
         default=False,
@@ -170,7 +213,7 @@ class Settings(BaseSettings):
         description="Comma-separated list of models that require max plan accounts",
     )
 
-    @field_validator("api_keys", "cookies", "max_models")
+    @field_validator("api_keys", "cookies", "max_models", "pad_tokens")
     def parse_comma_separated(cls, v: str | List[str]) -> List[str]:
         """Parse comma-separated string."""
         if isinstance(v, str):
