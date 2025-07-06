@@ -11,7 +11,7 @@ import uuid
 
 from app.core.config import settings
 from app.core.exceptions import NoAccountsAvailableError
-from app.core.account import Account, AccountStatus, AuthType
+from app.core.account import Account, AccountStatus, AuthType, OAuthToken
 from app.services.oauth import oauth_authenticator
 
 
@@ -49,6 +49,7 @@ class AccountManager:
     async def add_account(
         self,
         cookie_value: Optional[str] = None,
+        oauth_token: Optional[OAuthToken] = None,
         organization_uuid: Optional[str] = None,
         capabilities: Optional[List[str]] = None,
     ) -> Account:
@@ -56,8 +57,16 @@ class AccountManager:
 
         Args:
             cookie_value: The cookie value (optional)
+            oauth_token: The OAuth token (optional)
             organization_uuid: The organization UUID (optional, will be fetched or generated if not provided)
+            capabilities: The account capabilities (optional)
+
+        Raises:
+            ValueError: If neither cookie_value nor oauth_token is provided
         """
+        if not cookie_value and not oauth_token:
+            raise ValueError("Either cookie_value or oauth_token must be provided")
+
         if cookie_value and cookie_value in self._cookie_to_uuid:
             return self._accounts[self._cookie_to_uuid[cookie_value]]
 
@@ -84,11 +93,18 @@ class AccountManager:
             logger.info(f"Generated new organization UUID: {organization_uuid}")
 
         # Create new account
-        auth_type = AuthType.COOKIE_ONLY if cookie_value else AuthType.OAUTH_ONLY
+        if cookie_value and oauth_token:
+            auth_type = AuthType.BOTH
+        elif cookie_value:
+            auth_type = AuthType.COOKIE_ONLY
+        else:
+            auth_type = AuthType.OAUTH_ONLY
+
         account = Account(
             organization_uuid=organization_uuid,
             capabilities=capabilities,
             cookie_value=cookie_value,
+            oauth_token=oauth_token,
             auth_type=auth_type,
         )
         self._accounts[organization_uuid] = account
@@ -98,7 +114,10 @@ class AccountManager:
             self._cookie_to_uuid[cookie_value] = organization_uuid
 
         logger.info(
-            f"Added new account: {organization_uuid[:8]}... (cookie: {cookie_value[:20] + '...' if cookie_value else 'None'})"
+            f"Added new account: {organization_uuid[:8]}... "
+            f"(auth_type: {auth_type.value}, "
+            f"cookie: {cookie_value[:20] + '...' if cookie_value else 'None'}, "
+            f"oauth: {'Yes' if oauth_token else 'No'})"
         )
 
         if auth_type == AuthType.COOKIE_ONLY:

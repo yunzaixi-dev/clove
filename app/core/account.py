@@ -52,6 +52,7 @@ class Account:
         organization_uuid: str,
         capabilities: Optional[List[str]] = None,
         cookie_value: Optional[str] = None,
+        oauth_token: Optional[OAuthToken] = None,
         auth_type: AuthType = AuthType.COOKIE_ONLY,
     ):
         self.organization_uuid = organization_uuid
@@ -61,7 +62,7 @@ class Account:
         self.auth_type = auth_type
         self.last_used = datetime.now()
         self.resets_at: Optional[datetime] = None
-        self.oauth_token: Optional[OAuthToken] = None
+        self.oauth_token: Optional[OAuthToken] = oauth_token
 
     def __enter__(self) -> "Account":
         """Enter the context manager."""
