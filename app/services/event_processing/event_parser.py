@@ -108,7 +108,7 @@ class EventParser:
             streaming_event = StreamingEvent(root=data)
         except ValidationError:
             if self.skip_unknown_events:
-                logger.warning(f"Skipping unknown event: {sse_msg.event}")
+                logger.debug(f"Skipping unknown event: {sse_msg.event}")
                 return None
             logger.warning(
                 "Failed to validate streaming event. Falling back to UnknownEvent."
