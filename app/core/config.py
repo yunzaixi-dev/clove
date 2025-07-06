@@ -158,7 +158,14 @@ class Settings(BaseSettings):
         description="OAuth redirect URI for authorization flow",
     )
 
-    @field_validator("api_keys", "cookies")
+    # Claude API Specific
+    max_models: List[str] | str = Field(
+        default=["claude-opus-4-20250514"],
+        env="MAX_MODELS",
+        description="Comma-separated list of models that require max plan accounts",
+    )
+
+    @field_validator("api_keys", "cookies", "max_models")
     def parse_comma_separated(cls, v: str | List[str]) -> List[str]:
         """Parse comma-separated string."""
         if isinstance(v, str):

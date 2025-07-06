@@ -48,7 +48,11 @@ class ClaudeAPIProcessor(BaseProcessor):
             return context
 
         try:
-            account = await account_manager.get_account_for_oauth()
+            account = await account_manager.get_account_for_oauth(
+                is_max=True
+                if (context.messages_api_request.model in settings.max_models)
+                else None
+            )
 
             with account:
                 request_json = self._prepare_request_json(context)
