@@ -1,4 +1,4 @@
-import json
+import json5
 from typing import AsyncIterator
 from loguru import logger
 
@@ -96,17 +96,17 @@ class MessageCollectorProcessor(BaseProcessor):
             elif isinstance(event.root, ContentBlockStopEvent):
                 block = context.collected_message.content[event.root.index]
                 if isinstance(block, (ToolUseContent, ServerToolUseContent)):
-                    hasattr(block, "input_json") and block.input_json
-                    block.input = json.loads(block.input_json)
-                    del block.input_json
+                    if hasattr(block, "input_json") and block.input_json:
+                        block.input = json5.loads(block.input_json)
+                        del block.input_json
                 if isinstance(block, ToolResultContent):
-                    hasattr(block, "content_json") and block.content_json
-                    block = ToolResultContent(
-                        **block.model_dump(exclude={"content"}),
-                        content=json.loads(block.content_json),
-                    )
-                    del block.content_json
-                    context.collected_message.content[event.root.index] = block
+                    if hasattr(block, "content_json") and block.content_json:
+                        block = ToolResultContent(
+                            **block.model_dump(exclude={"content"}),
+                            content=json5.loads(block.content_json),
+                        )
+                        del block.content_json
+                        context.collected_message.content[event.root.index] = block
 
                 logger.debug(f"Content block {event.root.index} stopped")
 
