@@ -2,14 +2,15 @@ from dataclasses import dataclass
 from typing import Optional, AsyncIterator
 
 from app.core.calude_session import ClaudeWebSession
-from app.models.claude import Message
+from app.models.claude import Message, MessagesAPIRequest
 from app.models.internal import ClaudeWebRequest
 from app.models.streaming import StreamingEvent
-from app.processors.claude import ClaudeContext
+from app.processors.base import BaseContext
 
 
 @dataclass
-class ClaudeAIContext(ClaudeContext):
+class ClaudeAIContext(BaseContext):
+    messages_api_request: Optional[MessagesAPIRequest] = None
     claude_web_request: Optional[ClaudeWebRequest] = None
     claude_session: Optional[ClaudeWebSession] = None
     original_stream: Optional[AsyncIterator[str]] = None
