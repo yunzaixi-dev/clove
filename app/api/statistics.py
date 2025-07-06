@@ -22,7 +22,7 @@ class StatisticsResponse(BaseModel):
 router = APIRouter(prefix="/admin/statistics", tags=["Statistics"])
 
 
-@router.get("/statistics", response_model=StatisticsResponse)
+@router.get("", response_model=StatisticsResponse)
 async def get_statistics(_: AdminAuthDep):
     """Get system statistics. Requires admin authentication."""
     stats = await account_manager.get_status()
