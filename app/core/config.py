@@ -213,7 +213,9 @@ class Settings(BaseSettings):
         description="Comma-separated list of models that require max plan accounts",
     )
 
-    @field_validator("api_keys", "cookies", "max_models", "pad_tokens")
+    @field_validator(
+        "api_keys", "admin_api_keys", "cookies", "max_models", "pad_tokens"
+    )
     def parse_comma_separated(cls, v: str | List[str]) -> List[str]:
         """Parse comma-separated string."""
         if isinstance(v, str):
