@@ -1,10 +1,17 @@
 import json
 from curl_cffi import Response
 from curl_cffi.requests import AsyncSession
+from curl_cffi.requests.exceptions import RequestException
 from datetime import datetime, timedelta, UTC
 from typing import Dict
 from loguru import logger
 from fastapi.responses import StreamingResponse
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    retry_if_exception_type,
+    wait_fixed,
+)
 
 from app.models.claude import TextContent
 from app.processors.base import BaseProcessor
@@ -26,6 +33,24 @@ class ClaudeAPIProcessor(BaseProcessor):
         self.messages_api_url = (
             settings.claude_api_baseurl.encoded_string() + "/v1/messages"
         )
+
+    @retry(
+        stop=stop_after_attempt(settings.request_retries),
+        wait=wait_fixed(settings.request_retry_interval),
+        retry=retry_if_exception_type(RequestException),
+        reraise=True,
+    )
+    async def _request_messages_api(
+        self, session: AsyncSession, request_json: str, headers: Dict[str, str]
+    ) -> Response:
+        """Make HTTP request with retry mechanism for curl_cffi exceptions."""
+        response: Response = await session.post(
+            self.messages_api_url,
+            data=request_json,
+            headers=headers,
+            stream=True,
+        )
+        return response
 
     async def process(self, context: ClaudeAIContext) -> ClaudeAIContext:
         """
@@ -64,11 +89,8 @@ class ClaudeAPIProcessor(BaseProcessor):
                     impersonate="chrome",
                 )
 
-                response: Response = await session.post(
-                    self.messages_api_url,
-                    data=request_json,
-                    headers=headers,
-                    stream=True,
+                response = await self._request_messages_api(
+                    session, request_json, headers
                 )
 
                 # Handle rate limiting

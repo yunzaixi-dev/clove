@@ -5,8 +5,11 @@ import time
 from typing import Dict, List, Optional, Tuple
 from urllib.parse import urlparse, parse_qs
 
+from curl_cffi import Response
 from curl_cffi.requests import AsyncSession
 from loguru import logger
+from requests import RequestException
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
 
 from app.core.config import settings
 from app.core.account import Account, AuthType, OAuthToken
@@ -65,6 +68,25 @@ class OAuthAuthenticator:
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
         }
 
+    @retry(
+        stop=stop_after_attempt(settings.request_retries),
+        wait=wait_fixed(settings.request_retry_interval),
+        retry=retry_if_exception_type(RequestException),
+        reraise=True,
+    )
+    async def _request(self, method: str, url: str, **kwargs) -> Response:
+        self.session = AsyncSession(
+            timeout=settings.request_timeout,
+            impersonate="chrome",
+            proxy=self.proxy,
+        )
+
+        response: Response = await self.session.request(
+            method=method, url=url, **kwargs
+        )
+
+        return response
+
     async def get_organization_info(
         self, cookie: str
     ) -> Optional[Tuple[str, List[str]]]:
@@ -75,7 +97,7 @@ class OAuthAuthenticator:
         headers = self._build_headers(cookie)
 
         try:
-            response = await self.session.get(url, headers=headers)
+            response = await self._request("GET", url, headers=headers)
 
             if response.status_code != 200:
                 logger.error(f"Failed to get organizations: {response.status_code}")
@@ -128,8 +150,8 @@ class OAuthAuthenticator:
         try:
             logger.debug(f"Requesting authorization from: {authorize_url}")
 
-            response = await self.session.post(
-                authorize_url, json=payload, headers=headers
+            response = await self._request(
+                "POST", authorize_url, json=payload, headers=headers
             )
 
             if response.status_code != 200:
@@ -188,8 +210,11 @@ class OAuthAuthenticator:
             data["state"] = state
 
         try:
-            response = await self.session.post(
-                self.token_url, json=data, headers={"Content-Type": "application/json"}
+            response = await self._request(
+                "POST",
+                self.token_url,
+                json=data,
+                headers={"Content-Type": "application/json"},
             )
 
             if response.status_code != 200:
@@ -214,8 +239,11 @@ class OAuthAuthenticator:
         }
 
         try:
-            response = await self.session.post(
-                self.token_url, json=data, headers={"Content-Type": "application/json"}
+            response = await self._request(
+                "POST",
+                self.token_url,
+                json=data,
+                headers={"Content-Type": "application/json"},
             )
 
             if response.status_code != 200:

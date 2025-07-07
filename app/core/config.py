@@ -120,6 +120,8 @@ class Settings(BaseSettings):
 
     # Request settings
     request_timeout: int = Field(default=60, env="REQUEST_TIMEOUT")
+    request_retries: int = Field(default=3, env="REQUEST_RETRIES")
+    request_retry_interval: int = Field(default=1, env="REQUEST_RETRY_INTERVAL")
 
     # Feature flags
     preserve_chats: bool = Field(default=False, env="PRESERVE_CHATS")

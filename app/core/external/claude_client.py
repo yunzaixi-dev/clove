@@ -5,6 +5,8 @@ from urllib.parse import urljoin
 from uuid import uuid4
 
 from curl_cffi.requests import AsyncSession, Response
+from requests import RequestException
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
 
 from app.core.config import settings
 from app.core.exceptions import (
@@ -57,6 +59,12 @@ class ClaudeWebClient:
 
         return headers
 
+    @retry(
+        stop=stop_after_attempt(settings.request_retries),
+        wait=wait_fixed(settings.request_retry_interval),
+        retry=retry_if_exception_type(RequestException),
+        reraise=True,
+    )
     async def _request(
         self, method: str, url: str, conv_uuid: Optional[str] = None, **kwargs
     ) -> Response:
