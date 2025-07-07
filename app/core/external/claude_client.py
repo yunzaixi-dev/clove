@@ -5,7 +5,7 @@ from urllib.parse import urljoin
 from uuid import uuid4
 
 from curl_cffi.requests import AsyncSession, Response
-from requests import RequestException
+from curl_cffi.requests.exceptions import RequestException
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
 
 from app.core.config import settings

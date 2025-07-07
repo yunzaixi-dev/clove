@@ -7,6 +7,7 @@ from urllib.parse import urlparse, parse_qs
 
 from curl_cffi import Response
 from curl_cffi.requests import AsyncSession
+from curl_cffi.requests.exceptions import RequestException
 from loguru import logger
 from requests import RequestException
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
