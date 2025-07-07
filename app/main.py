@@ -7,6 +7,7 @@ from app.api.main import api_router
 from app.core.config import settings
 from app.core.error_handler import app_exception_handler
 from app.core.exceptions import AppError
+from app.core.static import register_static_routes
 from app.utils.logger import configure_logger
 from app.services.account import account_manager
 from app.services.session import session_manager
@@ -61,6 +62,9 @@ app.add_middleware(
 
 # Include routers
 app.include_router(api_router)
+
+# Static files
+register_static_routes(app)
 
 # Exception handlers
 app.add_exception_handler(AppError, app_exception_handler)

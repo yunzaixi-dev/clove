@@ -71,6 +71,11 @@ class Settings(BaseSettings):
         env="LOCALES_FOLDER",
         description="Folder path for storing translation files",
     )
+    static_folder: str = Field(
+        default=os.path.split(os.path.realpath(__file__))[0] + "/../static",
+        env="STATIC_FOLDER",
+        description="Folder path for storing static files",
+    )
     default_language: str = Field(
         default="en",
         env="DEFAULT_LANGUAGE",
