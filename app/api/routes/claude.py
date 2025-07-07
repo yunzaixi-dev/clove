@@ -7,7 +7,7 @@ from app.models.claude import MessagesAPIRequest
 from app.processors.claude_ai import ClaudeAIContext
 from app.processors.claude_ai.pipeline import ClaudeAIPipeline
 
-router = APIRouter(prefix="/v1", tags=["Claude API"])
+router = APIRouter()
 
 
 @router.post("/messages", response_model=None)

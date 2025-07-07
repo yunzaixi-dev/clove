@@ -19,7 +19,7 @@ class StatisticsResponse(BaseModel):
     accounts: AccountStats
 
 
-router = APIRouter(prefix="/admin/statistics", tags=["Statistics"])
+router = APIRouter()
 
 
 @router.get("", response_model=StatisticsResponse)

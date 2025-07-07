@@ -40,7 +40,7 @@ class AccountResponse(BaseModel):
     resets_at: Optional[str] = None
 
 
-router = APIRouter(prefix="/admin/accounts", tags=["Account Management"])
+router = APIRouter()
 
 
 @router.get("", response_model=List[AccountResponse])

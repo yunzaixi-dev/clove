@@ -3,10 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.claude import router as claude_router
-from app.api.accounts import router as accounts_router
-from app.api.settings import router as settings_router
-from app.api.statistics import router as statistics_router
+from app.api.main import api_router
 from app.core.config import settings
 from app.core.error_handler import app_exception_handler
 from app.core.exceptions import AppError
@@ -63,10 +60,7 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(claude_router)
-app.include_router(accounts_router)
-app.include_router(settings_router)
-app.include_router(statistics_router)
+app.include_router(api_router)
 
 # Exception handlers
 app.add_exception_handler(AppError, app_exception_handler)

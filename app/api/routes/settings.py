@@ -60,7 +60,7 @@ class SettingsUpdate(BaseModel):
     oauth_redirect_uri: str | None = None
 
 
-router = APIRouter(prefix="/admin/settings", tags=["Settings Management"])
+router = APIRouter()
 
 
 @router.get("", response_model=SettingsRead)
