@@ -1,5 +1,6 @@
 import os
 import json
+from pathlib import Path
 from typing import Optional, List, Dict, Any
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field, HttpUrl, field_validator
@@ -61,18 +62,18 @@ class Settings(BaseSettings):
     port: int = Field(default=8000, env="PORT")
 
     # Application configuration
-    data_folder: str = Field(
+    data_folder: Path = Field(
         default="data",
         env="DATA_FOLDER",
         description="Folder path for storing persistent data (accounts, etc.)",
     )
-    locales_folder: str = Field(
-        default=os.path.split(os.path.realpath(__file__))[0] + "/../locales",
+    locales_folder: Path = Field(
+        default=Path(__file__).parent.parent / "locales",
         env="LOCALES_FOLDER",
         description="Folder path for storing translation files",
     )
-    static_folder: str = Field(
-        default=os.path.split(os.path.realpath(__file__))[0] + "/../static",
+    static_folder: Path = Field(
+        default=Path(__file__).parent.parent / "static",
         env="STATIC_FOLDER",
         description="Folder path for storing static files",
     )

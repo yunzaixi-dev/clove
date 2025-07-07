@@ -3,7 +3,6 @@ from datetime import datetime, UTC
 from typing import List, Optional, Dict, Set
 
 from collections import defaultdict
-from pathlib import Path
 from loguru import logger
 import threading
 import json
@@ -418,10 +417,9 @@ class AccountManager:
         Args:
             data_folder: Optional data folder path. If not provided, uses settings.data_folder
         """
-        folder = Path(settings.data_folder)
-        folder.mkdir(parents=True, exist_ok=True)
+        settings.data_folder.mkdir(parents=True, exist_ok=True)
 
-        accounts_file = folder / "accounts.json"
+        accounts_file = settings.data_folder / "accounts.json"
 
         accounts_data = {
             organization_uuid: account.to_dict()
@@ -439,8 +437,7 @@ class AccountManager:
         Args:
             data_folder: Optional data folder path. If not provided, uses settings.data_folder
         """
-        folder = Path(settings.data_folder)
-        accounts_file = folder / "accounts.json"
+        accounts_file = settings.data_folder / "accounts.json"
 
         if not accounts_file.exists():
             logger.info(f"No accounts file found at {accounts_file}")

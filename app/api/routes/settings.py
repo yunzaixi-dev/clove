@@ -72,8 +72,8 @@ async def get_settings(_: AdminAuthDep) -> Settings:
 @router.put("", response_model=SettingsUpdate)
 async def update_settings(_: AdminAuthDep, updates: SettingsUpdate) -> Settings:
     """Update settings and save to config.json."""
-    config_path = os.path.join(settings.data_folder, "config.json")
-    os.makedirs(settings.data_folder, exist_ok=True)
+    config_path = settings.data_folder / "config.json"
+    settings.data_folder.mkdir(parents=True, exist_ok=True)
 
     if os.path.exists(config_path):
         try:

@@ -1,7 +1,6 @@
 import json
 import re
 from typing import Dict, Any, Optional
-from pathlib import Path
 from loguru import logger
 
 from app.core.config import settings
@@ -16,7 +15,7 @@ class I18nService:
     def __init__(self):
         self._translations: Dict[str, Dict[str, Any]] = {}
         self._default_language = settings.default_language
-        self._locales_dir = Path(settings.locales_folder)
+        self._locales_dir = settings.locales_folder
         self._load_translations()
 
     def _load_translations(self) -> None:
