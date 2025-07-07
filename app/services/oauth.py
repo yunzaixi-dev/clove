@@ -22,30 +22,6 @@ from app.core.exceptions import (
 class OAuthAuthenticator:
     """OAuth authenticator for Claude accounts using cookies."""
 
-    def __init__(self, proxy: Optional[str] = None):
-        self.proxy = proxy
-        self.session: Optional[AsyncSession] = None
-        self.client_id = settings.oauth_client_id
-        self.claude_endpoint = settings.claude_ai_url.encoded_string()
-        self.authorize_url = settings.oauth_authorize_url
-        self.token_url = settings.oauth_token_url
-        self.redirect_uri = settings.oauth_redirect_uri
-
-    async def initialize(self):
-        """Initialize session."""
-        if not self.session:
-            self.session = AsyncSession(
-                timeout=30,
-                impersonate="chrome",
-                proxy=self.proxy,
-            )
-
-    async def cleanup(self):
-        """Cleanup resources."""
-        if self.session:
-            await self.session.close()
-            self.session = None
-
     def _generate_pkce(self) -> Tuple[str, str]:
         """Generate PKCE verifier and challenge."""
         verifier = (
@@ -62,13 +38,15 @@ class OAuthAuthenticator:
 
     def _build_headers(self, cookie: str) -> Dict[str, str]:
         """Build request headers."""
+        claude_endpoint = settings.claude_ai_url.encoded_string()
+
         return {
             "Accept": "application/json",
             "Accept-Language": "en-US,en;q=0.9",
             "Cache-Control": "no-cache",
             "Cookie": cookie,
-            "Origin": self.claude_endpoint,
-            "Referer": f"{self.claude_endpoint}/new",
+            "Origin": claude_endpoint,
+            "Referer": f"{claude_endpoint}/new",
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
         }
 
@@ -79,15 +57,12 @@ class OAuthAuthenticator:
         reraise=True,
     )
     async def _request(self, method: str, url: str, **kwargs) -> Response:
-        self.session = AsyncSession(
+        async with AsyncSession(
             timeout=settings.request_timeout,
             impersonate="chrome",
-            proxy=self.proxy,
-        )
-
-        response: Response = await self.session.request(
-            method=method, url=url, **kwargs
-        )
+            proxy=settings.proxy_url,
+        ) as session:
+            response: Response = await session.request(method=method, url=url, **kwargs)
 
         if response.status_code == 403:
             raise ClaudeAuthenticationError()
@@ -98,9 +73,7 @@ class OAuthAuthenticator:
         self, cookie: str
     ) -> Optional[Tuple[str, List[str]]]:
         """Get organization UUID and capabilities."""
-        await self.initialize()
-
-        url = f"{self.claude_endpoint}/api/organizations"
+        url = f"{settings.claude_ai_url.encoded_string()}/api/organizations"
         headers = self._build_headers(cookie)
 
         try:
@@ -132,8 +105,6 @@ class OAuthAuthenticator:
         Use Cookie to automatically get authorization code.
         Returns: (authorization code, verifier) or None if failed
         """
-        await self.initialize()
-
         verifier, challenge = self._generate_pkce()
         state = (
             base64.urlsafe_b64encode(secrets.token_bytes(32))
@@ -141,13 +112,15 @@ class OAuthAuthenticator:
             .rstrip("=")
         )
 
-        authorize_url = self.authorize_url.format(organization_uuid=organization_uuid)
+        authorize_url = settings.oauth_authorize_url.format(
+            organization_uuid=organization_uuid
+        )
 
         payload = {
             "response_type": "code",
-            "client_id": self.client_id,
+            "client_id": settings.oauth_client_id,
             "organization_uuid": organization_uuid,
-            "redirect_uri": self.redirect_uri,
+            "redirect_uri": settings.oauth_redirect_uri,
             "scope": "user:profile user:inference",
             "state": state,
             "code_challenge": challenge,
@@ -202,8 +175,6 @@ class OAuthAuthenticator:
 
     async def exchange_token(self, code: str, verifier: str) -> Optional[Dict]:
         """Exchange authorization code for access token."""
-        await self.initialize()
-
         parts = code.split("#")
         auth_code = parts[0]
         state = parts[1] if len(parts) > 1 else None
@@ -211,8 +182,8 @@ class OAuthAuthenticator:
         data = {
             "code": auth_code,
             "grant_type": "authorization_code",
-            "client_id": self.client_id,
-            "redirect_uri": self.redirect_uri,
+            "client_id": settings.oauth_client_id,
+            "redirect_uri": settings.oauth_redirect_uri,
             "code_verifier": verifier,
         }
 
@@ -222,7 +193,7 @@ class OAuthAuthenticator:
         try:
             response = await self._request(
                 "POST",
-                self.token_url,
+                settings.oauth_token_url,
                 json=data,
                 headers={"Content-Type": "application/json"},
             )
@@ -240,18 +211,16 @@ class OAuthAuthenticator:
 
     async def refresh_access_token(self, refresh_token: str) -> Optional[Dict]:
         """Refresh access token."""
-        await self.initialize()
-
         data = {
             "grant_type": "refresh_token",
             "refresh_token": refresh_token,
-            "client_id": self.client_id,
+            "client_id": settings.oauth_client_id,
         }
 
         try:
             response = await self._request(
                 "POST",
-                self.token_url,
+                settings.oauth_token_url,
                 json=data,
                 headers={"Content-Type": "application/json"},
             )
