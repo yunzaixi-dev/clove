@@ -9,11 +9,14 @@ from curl_cffi import Response
 from curl_cffi.requests import AsyncSession
 from curl_cffi.requests.exceptions import RequestException
 from loguru import logger
-from requests import RequestException
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
 
 from app.core.config import settings
 from app.core.account import Account, AuthType, OAuthToken
+from app.core.exceptions import (
+    ClaudeAuthenticationError,
+    ClaudeHttpError,
+)
 
 
 class OAuthAuthenticator:
@@ -86,6 +89,9 @@ class OAuthAuthenticator:
             method=method, url=url, **kwargs
         )
 
+        if response.status_code == 403:
+            raise ClaudeAuthenticationError()
+
         return response
 
     async def get_organization_info(
@@ -100,9 +106,13 @@ class OAuthAuthenticator:
         try:
             response = await self._request("GET", url, headers=headers)
 
-            if response.status_code != 200:
-                logger.error(f"Failed to get organizations: {response.status_code}")
-                return None
+            if response.status_code >= 400:
+                raise ClaudeHttpError(
+                    url=url,
+                    status_code=response.status_code,
+                    error_type="Unknown",
+                    error_message="Failed to get organization info",
+                )
 
             org_data = response.json()
             if org_data and len(org_data) > 0:
@@ -113,8 +123,7 @@ class OAuthAuthenticator:
 
         except Exception as e:
             logger.error(f"Error getting organization UUID: {e}")
-
-        return None
+            raise e
 
     async def authorize_with_cookie(
         self, cookie: str, organization_uuid: str

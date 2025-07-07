@@ -84,9 +84,9 @@ class ClaudeRateLimitedError(AppError):
 class CloudflareBlockedError(AppError):
     def __init__(self, context: Optional[Dict[str, Any]] = None):
         super().__init__(
-            error_code=302121,
+            error_code=503121,
             message_key="claudeClient.cloudflareBlocked",
-            status_code=302,
+            status_code=503,
             context=context,
         )
 
@@ -110,6 +110,16 @@ class InvalidModelNameError(AppError):
             message_key="claudeClient.invalidModelName",
             status_code=400,
             context=_context,
+        )
+
+
+class ClaudeAuthenticationError(AppError):
+    def __init__(self, context: Optional[Dict[str, Any]] = None):
+        super().__init__(
+            error_code=400124,
+            message_key="claudeClient.authenticationError",
+            status_code=400,
+            context=context,
         )
 
 

@@ -12,7 +12,8 @@
     "cloudflareBlocked": "Request blocked by Cloudflare. Please check your IP address.",
     "organizationDisabled": "Your Claude AI account has been disabled.",
     "httpError": "HTTP error occurred when calling Claude AI: {error_type} - {error_message} (Status: {status_code})",
-    "invalidModelName": "Invalid model name provided. Please ensure you have access to model {model_name}."
+    "invalidModelName": "Invalid model name provided. Please ensure you have access to model {model_name}.",
+    "authenticationError": "Authentication error. Please check your Claude Cookie or OAuth credentials."
   },
   "messageProcessor": {
     "noValidMessages": "No valid messages found in the request.",
