@@ -78,7 +78,18 @@ async def health():
     return {"status": "healthy" if stats["valid_accounts"] > 0 else "degraded"}
 
 
-if __name__ == "__main__":
+def main():
+    """Main entry point for the application."""
     import uvicorn
 
-    uvicorn.run("app.main:app", host=settings.host, port=settings.port, log_config=None)
+    uvicorn.run(
+        "app.main:app",
+        host=settings.host,
+        port=settings.port,
+        log_config=None,
+        reload=False,
+    )
+
+
+if __name__ == "__main__":
+    main()
