@@ -44,7 +44,9 @@ class Settings(BaseSettings):
     def _json_config_settings(cls) -> Dict[str, Any]:
         """Load settings from JSON config file in data_folder."""
         # First get data_folder from env or default
-        data_folder = os.environ.get("DATA_FOLDER", "data")
+        data_folder = os.environ.get(
+            "DATA_FOLDER", str(Path.home() / ".clove" / "data")
+        )
         config_path = os.path.join(data_folder, "config.json")
 
         if os.path.exists(config_path):
@@ -59,11 +61,11 @@ class Settings(BaseSettings):
 
     # Server settings
     host: str = Field(default="0.0.0.0", env="HOST")
-    port: int = Field(default=8000, env="PORT")
+    port: int = Field(default=5201, env="PORT")
 
     # Application configuration
     data_folder: Path = Field(
-        default="data",
+        default=Path.home() / ".clove" / "data",
         env="DATA_FOLDER",
         description="Folder path for storing persistent data (accounts, etc.)",
     )
