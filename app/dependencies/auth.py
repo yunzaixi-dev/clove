@@ -1,9 +1,21 @@
 from typing import Optional, Annotated
 from loguru import logger
 from fastapi import Depends, Header
+import secrets
 
 from app.core.config import settings
 from app.core.exceptions import InvalidAPIKeyError
+
+_temp_admin_api_key: Optional[str] = None
+
+if not settings.admin_api_keys:
+    _temp_admin_api_key = f"sk-admin-{secrets.token_urlsafe(32)}"
+    logger.warning(
+        f"No admin API keys configured. Generated temporary admin API key: {_temp_admin_api_key}"
+    )
+    logger.warning(
+        "This is a temporary key and will not be saved. Please configure admin API keys in settings."
+    )
 
 
 async def get_api_key(
@@ -31,7 +43,7 @@ async def verify_api_key(
     api_key: APIKeyDep,
 ) -> str:
     # Verify against configured keys
-    valid_keys = settings.api_keys + settings.admin_api_keys
+    valid_keys = settings.api_keys + settings.admin_api_keys + [_temp_admin_api_key]
 
     if not valid_keys:
         logger.error("No API keys configured, Please configure at least one API key.")
@@ -50,7 +62,7 @@ async def verify_admin_api_key(
     api_key: APIKeyDep,
 ) -> str:
     # Verify against configured admin keys
-    valid_keys = settings.admin_api_keys
+    valid_keys = settings.admin_api_keys + [_temp_admin_api_key]
 
     if not valid_keys:
         logger.error(
