@@ -1,5 +1,7 @@
 import time
 import base64
+import random
+import string
 from typing import List
 from loguru import logger
 
@@ -64,6 +66,16 @@ class ClaudeWebProcessor(BaseProcessor):
             )
             if not merged_text:
                 raise NoValidMessagesError()
+
+            if settings.padtxt_length > 0:
+                pad_tokens = settings.pad_tokens or (
+                    string.ascii_letters + string.digits
+                )
+                pad_text = "".join(random.choices(pad_tokens, k=settings.padtxt_length))
+                merged_text = pad_text + merged_text
+                logger.debug(
+                    f"Added {settings.padtxt_length} padding tokens to the beginning of the message"
+                )
 
             image_file_ids: List[str] = []
             if images:
