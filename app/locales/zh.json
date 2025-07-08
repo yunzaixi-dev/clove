@@ -7,6 +7,9 @@
   "accountManager": {
     "noAccountsAvailable": "当前没有可用的账户。请稍后重试。"
   },
+  "accounts": {
+    "oauthExchangeError": "无法将授权代码兑换为令牌。"
+  },
   "claudeClient": {
     "claudeRateLimited": "Claude API 速率限制已超出。请在 {resets_at} 后重试。",
     "cloudflareBlocked": "请求被 Cloudflare 阻止。请检查您的连接。",

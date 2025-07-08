@@ -1,10 +1,13 @@
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
+import time
 
+from app.core.exceptions import OAuthExchangeError
 from app.dependencies.auth import AdminAuthDep
 from app.services.account import account_manager
 from app.core.account import AuthType, AccountStatus, OAuthToken
+from app.services.oauth import oauth_authenticator
 
 
 class OAuthTokenCreate(BaseModel):
@@ -25,6 +28,13 @@ class AccountUpdate(BaseModel):
     oauth_token: Optional[OAuthTokenCreate] = None
     capabilities: Optional[List[str]] = None
     status: Optional[AccountStatus] = None
+
+
+class OAuthCodeExchange(BaseModel):
+    organization_uuid: str
+    code: str
+    pkce_verifier: str
+    capabilities: Optional[List[str]] = None
 
 
 class AccountResponse(BaseModel):
@@ -199,3 +209,42 @@ async def delete_account(organization_uuid: str, _: AdminAuthDep):
     await account_manager.remove_account(organization_uuid)
 
     return {"message": "Account deleted successfully"}
+
+
+@router.post("/oauth/exchange", response_model=AccountResponse)
+async def exchange_oauth_code(exchange_data: OAuthCodeExchange, _: AdminAuthDep):
+    """Exchange OAuth authorization code for tokens and create account."""
+    # Exchange code for tokens
+    token_data = await oauth_authenticator.exchange_token(
+        exchange_data.code, exchange_data.pkce_verifier
+    )
+
+    if not token_data:
+        raise OAuthExchangeError()
+
+    # Create OAuth token object
+    oauth_token = OAuthToken(
+        access_token=token_data["access_token"],
+        refresh_token=token_data["refresh_token"],
+        expires_at=time.time() + token_data["expires_in"],
+    )
+
+    # Create account with OAuth token
+    account = await account_manager.add_account(
+        oauth_token=oauth_token,
+        organization_uuid=exchange_data.organization_uuid,
+        capabilities=exchange_data.capabilities,
+    )
+
+    return AccountResponse(
+        organization_uuid=account.organization_uuid,
+        capabilities=account.capabilities,
+        cookie_value=None,
+        status=account.status,
+        auth_type=account.auth_type,
+        is_pro=account.is_pro,
+        is_max=account.is_max,
+        has_oauth=True,
+        last_used=account.last_used.isoformat(),
+        resets_at=account.resets_at.isoformat() if account.resets_at else None,
+    )

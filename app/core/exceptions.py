@@ -149,6 +149,16 @@ class ClaudeHttpError(AppError):
         )
 
 
+class OAuthExchangeError(AppError):
+    def __init__(self, context: Optional[Dict[str, Any]] = None):
+        super().__init__(
+            error_code=400140,
+            message_key="accounts.oauthExchangeError",
+            status_code=400,
+            context=context,
+        )
+
+
 class NoValidMessagesError(AppError):
     def __init__(self, context: Optional[Dict[str, Any]] = None):
         super().__init__(

@@ -7,6 +7,9 @@
   "accountManager": {
     "noAccountsAvailable": "No accounts are currently available. Please try again later."
   },
+  "accounts": {
+    "oauthExchangeError": "Failed to exchange authorization code for tokens."
+  },
   "claudeClient": {
     "claudeRateLimited": "Claude AI rate limit exceeded. Please try again after {resets_at}.",
     "cloudflareBlocked": "Request blocked by Cloudflare. Please check your IP address.",
