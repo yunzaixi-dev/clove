@@ -27,9 +27,7 @@ class StreamingResponseProcessor(BaseProcessor):
         This processor typically marks the end of the pipeline by returning STOP action.
         """
         if context.response:
-            logger.debug(
-                "Skipping StreamingResponseProcessor due to existing response"
-            )
+            logger.debug("Skipping StreamingResponseProcessor due to existing response")
             return context
 
         if not context.event_stream:

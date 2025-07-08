@@ -5,9 +5,7 @@ import time
 from typing import Dict, List, Optional, Tuple
 from urllib.parse import urlparse, parse_qs
 
-from curl_cffi import Response
-from curl_cffi.requests import AsyncSession
-from curl_cffi.requests.exceptions import RequestException
+from app.core.http_client import Response, create_session, RequestException
 from loguru import logger
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
 
@@ -57,11 +55,13 @@ class OAuthAuthenticator:
         reraise=True,
     )
     async def _request(self, method: str, url: str, **kwargs) -> Response:
-        async with AsyncSession(
+        session = create_session(
             timeout=settings.request_timeout,
             impersonate="chrome",
             proxy=settings.proxy_url,
-        ) as session:
+            follow_redirects=False,
+        )
+        async with session:
             response: Response = await session.request(method=method, url=url, **kwargs)
 
         if response.status_code == 403:

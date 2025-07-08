@@ -1,8 +1,8 @@
 import base64
 from typing import List, Optional, Tuple
 from loguru import logger
-from curl_cffi import requests
 
+from app.core.http_client import download_image
 from app.core.config import settings
 from app.core.exceptions import ExternalImageDownloadError, ExternalImageNotAllowedError
 from app.models.claude import (
@@ -126,18 +126,14 @@ async def extract_image_from_url(url: str) -> Optional[Base64ImageSource]:
         try:
             logger.debug(f"Downloading external image: {url}")
 
-            async with requests.AsyncSession() as session:
-                response = await session.get(
-                    url, timeout=settings.request_timeout, allow_redirects=True
-                )
-                response.raise_for_status()
+            content, content_type = await download_image(
+                url, timeout=settings.request_timeout
+            )
+            base64_data = base64.b64encode(content).decode("utf-8")
 
-                content_type = response.headers.get("content-type", "image/jpeg")
-                base64_data = base64.b64encode(response.content).decode("utf-8")
-
-                return Base64ImageSource(
-                    type="base64", media_type=ImageType(content_type), data=base64_data
-                )
+            return Base64ImageSource(
+                type="base64", media_type=ImageType(content_type), data=base64_data
+            )
         except Exception:
             raise ExternalImageDownloadError(url)
 

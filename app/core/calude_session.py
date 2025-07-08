@@ -1,6 +1,6 @@
 from typing import Dict, Any, AsyncIterator, Optional
 from datetime import datetime
-from curl_cffi import Response
+from app.core.http_client import Response
 from loguru import logger
 
 from app.core.config import settings
@@ -24,10 +24,17 @@ class ClaudeWebSession:
 
     async def stream(self, response: Response) -> AsyncIterator[str]:
         """Get the SSE stream."""
-        async for chunk in response.aiter_lines():
+        buffer = b""
+        async for chunk in response.aiter_bytes():
             self.update_activity()
-            line = chunk.decode("utf-8") + "\n"
-            yield line
+            buffer += chunk
+            lines = buffer.split(b"\n")
+            buffer = lines[-1]
+            for line in lines[:-1]:
+                yield line.decode("utf-8") + "\n"
+
+        if buffer:
+            yield buffer.decode("utf-8")
 
         logger.debug(f"Stream completed for session {self.session_id}")
 

@@ -1,11 +1,16 @@
+import json
 from loguru import logger
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 from urllib.parse import urljoin
 from uuid import uuid4
 
-from curl_cffi.requests import AsyncSession, Response
-from curl_cffi.requests.exceptions import RequestException
+from app.core.http_client import (
+    create_session,
+    RequestException,
+    Response,
+    AsyncSession,
+)
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
 
 from app.core.config import settings
@@ -29,10 +34,11 @@ class ClaudeWebClient:
 
     async def initialize(self):
         """Initialize the client session."""
-        self.session = AsyncSession(
+        self.session = create_session(
             timeout=settings.request_timeout,
             impersonate="chrome",
             proxy=settings.proxy_url,
+            follow_redirects=False,
         )
 
     async def cleanup(self):
@@ -66,7 +72,12 @@ class ClaudeWebClient:
         reraise=True,
     )
     async def _request(
-        self, method: str, url: str, conv_uuid: Optional[str] = None, **kwargs
+        self,
+        method: str,
+        url: str,
+        conv_uuid: Optional[str] = None,
+        stream=None,
+        **kwargs,
     ) -> Response:
         """Make HTTP request with error handling."""
         if not self.session:
@@ -77,7 +88,7 @@ class ClaudeWebClient:
             headers = self._build_headers(cookie_value, conv_uuid)
             kwargs["headers"] = {**headers, **kwargs.get("headers", {})}
             response: Response = await self.session.request(
-                method=method, url=url, **kwargs
+                method=method, url=url, stream=stream, **kwargs
             )
 
             if response.status_code < 300:
@@ -87,7 +98,10 @@ class ClaudeWebClient:
                 raise CloudflareBlockedError()
 
             try:
-                error_data = response.json()
+                if stream:
+                    error_data = await response.ajson()
+                else:
+                    error_data = response.json()
                 error_body = error_data.get("error", {})
                 error_message = error_body.get("message", "Unknown error")
                 error_type = error_body.get("type", "unknown")
@@ -102,15 +116,15 @@ class ClaudeWebClient:
                 raise OrganizationDisabledError()
 
             if response.status_code == 429:
-                resets_at = (
-                    error_message.get("resetsAt")
-                    if isinstance(error_message, dict)
-                    else None
-                )
-                if resets_at and isinstance(resets_at, int):
-                    reset_time = datetime.fromtimestamp(resets_at, tz=timezone.utc)
-                    logger.error(f"Rate limit exceeded, resets at: {reset_time}")
-                    raise ClaudeRateLimitedError(resets_at=reset_time)
+                try:
+                    error_message_data = json.loads(error_message)
+                    resets_at = error_message_data.get("resetsAt")
+                    if resets_at and isinstance(resets_at, int):
+                        reset_time = datetime.fromtimestamp(resets_at, tz=timezone.utc)
+                        logger.error(f"Rate limit exceeded, resets at: {reset_time}")
+                        raise ClaudeRateLimitedError(resets_at=reset_time)
+                except json.JSONDecodeError:
+                    pass
 
             raise ClaudeHttpError(
                 url=url,

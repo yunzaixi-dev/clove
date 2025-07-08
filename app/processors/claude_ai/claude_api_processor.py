@@ -1,7 +1,9 @@
-import json
-from curl_cffi import Response
-from curl_cffi.requests import AsyncSession
-from curl_cffi.requests.exceptions import RequestException
+from app.core.http_client import (
+    Response,
+    AsyncSession,
+    RequestException,
+    create_session,
+)
 from datetime import datetime, timedelta, UTC
 from typing import Dict
 from loguru import logger
@@ -44,7 +46,8 @@ class ClaudeAPIProcessor(BaseProcessor):
         self, session: AsyncSession, request_json: str, headers: Dict[str, str]
     ) -> Response:
         """Make HTTP request with retry mechanism for curl_cffi exceptions."""
-        response: Response = await session.post(
+        response: Response = await session.request(
+            "POST",
             self.messages_api_url,
             data=request_json,
             headers=headers,
@@ -83,10 +86,11 @@ class ClaudeAPIProcessor(BaseProcessor):
                 request_json = self._prepare_request_json(context)
                 headers = self._prepare_headers(account.oauth_token.access_token)
 
-                session = AsyncSession(
+                session = create_session(
                     proxy=settings.proxy_url,
                     timeout=settings.request_timeout,
                     impersonate="chrome",
+                    follow_redirects=False,
                 )
 
                 response = await self._request_messages_api(
@@ -103,14 +107,7 @@ class ClaudeAPIProcessor(BaseProcessor):
                     raise ClaudeRateLimitedError(resets_at=next_hour)
 
                 if response.status_code >= 400:
-                    error_content = ""
-                    async for chunk in response.aiter_content():
-                        error_content += chunk.decode("utf-8")
-
-                    try:
-                        error_data = json.loads(error_content)
-                    except json.JSONDecodeError:
-                        error_data = {}
+                    error_data = await response.ajson()
 
                     if (
                         response.status_code == 400
@@ -132,7 +129,7 @@ class ClaudeAPIProcessor(BaseProcessor):
                     )
 
                 async def stream_response():
-                    async for chunk in response.aiter_content():
+                    async for chunk in response.aiter_bytes():
                         yield chunk
 
                     await session.close()

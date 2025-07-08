@@ -86,7 +86,6 @@ def main():
         "app.main:app",
         host=settings.host,
         port=settings.port,
-        log_config=None,
         reload=False,
     )
 
