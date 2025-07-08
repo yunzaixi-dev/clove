@@ -1,6 +1,7 @@
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
+from uuid import UUID
 import time
 
 from app.core.exceptions import OAuthExchangeError
@@ -19,7 +20,7 @@ class OAuthTokenCreate(BaseModel):
 class AccountCreate(BaseModel):
     cookie_value: Optional[str] = None
     oauth_token: Optional[OAuthTokenCreate] = None
-    organization_uuid: Optional[str] = None
+    organization_uuid: Optional[UUID] = None
     capabilities: Optional[List[str]] = None
 
 
@@ -31,14 +32,14 @@ class AccountUpdate(BaseModel):
 
 
 class OAuthCodeExchange(BaseModel):
-    organization_uuid: str
+    organization_uuid: UUID
     code: str
     pkce_verifier: str
     capabilities: Optional[List[str]] = None
 
 
 class AccountResponse(BaseModel):
-    organization_uuid: str
+    organization_uuid: UUID
     capabilities: Optional[List[str]]
     cookie_value: Optional[str] = Field(None, description="Masked cookie value")
     status: AccountStatus
@@ -117,7 +118,7 @@ async def create_account(account_data: AccountCreate, _: AdminAuthDep):
     account = await account_manager.add_account(
         cookie_value=account_data.cookie_value,
         oauth_token=oauth_token,
-        organization_uuid=account_data.organization_uuid,
+        organization_uuid=str(account_data.organization_uuid),
         capabilities=account_data.capabilities,
     )
 
@@ -232,7 +233,7 @@ async def exchange_oauth_code(exchange_data: OAuthCodeExchange, _: AdminAuthDep)
     # Create account with OAuth token
     account = await account_manager.add_account(
         oauth_token=oauth_token,
-        organization_uuid=exchange_data.organization_uuid,
+        organization_uuid=str(exchange_data.organization_uuid),
         capabilities=exchange_data.capabilities,
     )
 
