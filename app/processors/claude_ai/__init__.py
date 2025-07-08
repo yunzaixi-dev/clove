@@ -1,6 +1,6 @@
 from app.processors.claude_ai.context import ClaudeAIContext
 from app.processors.claude_ai.pipeline import ClaudeAIPipeline
-from app.processors.claude_ai.test_message_processor import TestMessageProcessor
+from app.processors.claude_ai.tavern_test_message_processor import TestMessageProcessor
 from app.processors.claude_ai.claude_web_processor import ClaudeWebProcessor
 from app.processors.claude_ai.claude_api_processor import ClaudeAPIProcessor
 from app.processors.claude_ai.event_parser_processor import EventParsingProcessor

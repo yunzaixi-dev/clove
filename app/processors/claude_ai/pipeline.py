@@ -3,7 +3,7 @@ from typing import List, Optional
 from app.processors.pipeline import ProcessingPipeline
 from app.processors.base import BaseProcessor
 from app.processors.claude_ai import ClaudeAIContext
-from app.processors.claude_ai.test_message_processor import TestMessageProcessor
+from app.processors.claude_ai.tavern_test_message_processor import TestMessageProcessor
 from app.processors.claude_ai.claude_web_processor import ClaudeWebProcessor
 from app.processors.claude_ai.claude_api_processor import ClaudeAPIProcessor
 from app.processors.claude_ai.event_parser_processor import EventParsingProcessor
