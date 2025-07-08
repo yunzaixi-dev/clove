@@ -14,6 +14,7 @@ from app.core.account import Account, AuthType, OAuthToken
 from app.core.exceptions import (
     ClaudeAuthenticationError,
     ClaudeHttpError,
+    CloudflareBlockedError,
 )
 
 
@@ -64,8 +65,19 @@ class OAuthAuthenticator:
         async with session:
             response: Response = await session.request(method=method, url=url, **kwargs)
 
+        if response.status_code == 302:
+            raise CloudflareBlockedError()
+
         if response.status_code == 403:
             raise ClaudeAuthenticationError()
+
+        if response.status_code >= 300:
+            raise ClaudeHttpError(
+                url=url,
+                status_code=response.status_code,
+                error_type="Unknown",
+                error_message="Error occurred during request to Claude.ai",
+            )
 
         return response
 
@@ -78,14 +90,6 @@ class OAuthAuthenticator:
 
         try:
             response = await self._request("GET", url, headers=headers)
-
-            if response.status_code >= 400:
-                raise ClaudeHttpError(
-                    url=url,
-                    status_code=response.status_code,
-                    error_type="Unknown",
-                    error_message="Failed to get organization info",
-                )
 
             org_data = response.json()
             if org_data and len(org_data) > 0:
@@ -136,10 +140,6 @@ class OAuthAuthenticator:
             response = await self._request(
                 "POST", authorize_url, json=payload, headers=headers
             )
-
-            if response.status_code != 200:
-                logger.error(f"Authorization failed: {response.status_code}")
-                return None
 
             auth_response = response.json()
             redirect_uri = auth_response.get("redirect_uri")
