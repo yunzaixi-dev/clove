@@ -1,4 +1,5 @@
 from typing import List, Optional
+from loguru import logger
 
 from app.services.session import SessionManager
 from app.processors.pipeline import ProcessingPipeline
@@ -71,6 +72,8 @@ class ClaudeAIPipeline(ProcessingPipeline):
         """
         try:
             return await super().process(context)
-        finally:
+        except Exception as e:
             if context.claude_session:
                 await SessionManager.remove_session(context.claude_session.session_id)
+            logger.error(f"Pipeline processing failed: {e}")
+            raise e
