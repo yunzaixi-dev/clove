@@ -43,10 +43,10 @@ RUN mkdir -p /data
 # Environment variables
 ENV DATA_FOLDER=/data
 ENV HOST=0.0.0.0
-ENV PORT=5201
+ENV PORT=${PORT:-5201}
 
 # Expose port
-EXPOSE 5201
+EXPOSE ${PORT:-5201}
 
 # Run the application
 CMD ["python", "-m", "app.main"]
