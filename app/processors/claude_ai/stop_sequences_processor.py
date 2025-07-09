@@ -12,6 +12,7 @@ from app.models.streaming import (
     MessageDeltaData,
     TextDelta,
 )
+from app.services.session import session_manager
 
 
 class StopSequencesProcessor(BaseProcessor):
@@ -49,7 +50,9 @@ class StopSequencesProcessor(BaseProcessor):
         logger.debug(f"Setting up stop sequences processing for: {stop_sequences}")
 
         original_stream = context.event_stream
-        new_stream = self._process_stop_sequences(original_stream, stop_sequences)
+        new_stream = self._process_stop_sequences(
+            original_stream, stop_sequences, context
+        )
         context.event_stream = new_stream
 
         return context
@@ -58,6 +61,7 @@ class StopSequencesProcessor(BaseProcessor):
         self,
         event_stream: AsyncIterator[StreamingEvent],
         stop_sequences: List[str],
+        context: ClaudeAIContext,
     ) -> AsyncIterator[StreamingEvent]:
         """
         Process events and stop when a stop sequence is detected.
@@ -135,6 +139,11 @@ class StopSequencesProcessor(BaseProcessor):
                                 yield StreamingEvent(
                                     root=MessageStopEvent(type="message_stop")
                                 )
+
+                                if context.claude_session:
+                                    await session_manager.remove_session(
+                                        context.claude_session.session_id
+                                    )
 
                                 return
 
