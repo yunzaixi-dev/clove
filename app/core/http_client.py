@@ -21,6 +21,7 @@ try:
         Response as CurlResponse,
     )
     from curl_cffi.requests.exceptions import RequestException as CurlRequestException
+    import curl_cffi
 
     CURL_CFFI_AVAILABLE = True
 except ImportError:
@@ -182,6 +183,40 @@ if CURL_CFFI_AVAILABLE:
                 allow_redirects=follow_redirects,
             )
 
+        def process_files(self, files: dict) -> curl_cffi.CurlMime:
+            # Create multipart form
+            multipart = curl_cffi.CurlMime()
+
+            # Handle different file formats
+            if isinstance(files, dict):
+                for field_name, file_info in files.items():
+                    if isinstance(file_info, tuple):
+                        # Format: {"field": (filename, data, content_type)}
+                        if len(file_info) >= 3:
+                            filename, file_data, content_type = file_info[:3]
+                        elif len(file_info) == 2:
+                            filename, file_data = file_info
+                            content_type = "application/octet-stream"
+                        else:
+                            raise ValueError(
+                                f"Invalid file tuple format for field {field_name}"
+                            )
+
+                        multipart.addpart(
+                            name=field_name,
+                            content_type=content_type,
+                            filename=filename,
+                            data=file_data,
+                        )
+                    else:
+                        # Simple format: {"field": data}
+                        multipart.addpart(
+                            name=field_name,
+                            data=file_info,
+                        )
+
+            return multipart
+
         @retry(
             stop=stop_after_attempt(settings.request_retries),
             wait=wait_fixed(settings.request_retry_interval),
@@ -200,16 +235,30 @@ if CURL_CFFI_AVAILABLE:
             **kwargs,
         ) -> Response:
             logger.debug(f"Making {method} request to {url}")
-            response = await self._session.request(
-                method=method,
-                url=url,
-                headers=headers,
-                json=json,
-                data=data,
-                stream=stream,
-                **kwargs,
-            )
-            return CurlResponseWrapper(response)
+
+            # Handle file uploads - convert files parameter to multipart
+            files = kwargs.pop("files", None)
+
+            multipart = None
+
+            if files:
+                multipart = self.process_files(files)
+                kwargs["multipart"] = multipart
+
+            try:
+                response = await self._session.request(
+                    method=method,
+                    url=url,
+                    headers=headers,
+                    json=json,
+                    data=data,
+                    stream=stream,
+                    **kwargs,
+                )
+                return CurlResponseWrapper(response)
+            finally:
+                if multipart:
+                    multipart.close()
 
         async def close(self):
             await self._session.close()
@@ -352,22 +401,18 @@ if HTTPX_AVAILABLE:
 async def download_image(url: str, timeout: int = 30) -> Tuple[bytes, str]:
     """Download an image from a URL and return content and content type.
 
-    Uses curl_cffi if available, otherwise httpx.
+    Uses the unified session interface that works with both curl_cffi and httpx.
     """
-    if CURL_CFFI_AVAILABLE:
-        async with CurlAsyncSession() as session:
-            response = await session.get(url, timeout=timeout, allow_redirects=True)
-            response.raise_for_status()
-            content_type = response.headers.get("content-type", "image/jpeg")
-            return response.content, content_type
-    elif HTTPX_AVAILABLE:
-        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
-            response = await client.get(url)
-            response.raise_for_status()
-            content_type = response.headers.get("content-type", "image/jpeg")
-            return response.content, content_type
-    else:
-        raise ImportError("No HTTP client available for downloading images")
+    async with create_session(timeout=timeout) as session:
+        response = await session.request("GET", url)
+        content_type = response.headers.get("content-type", "image/jpeg")
+
+        # Read the response content
+        content = b""
+        async for chunk in response.aiter_bytes():
+            content += chunk
+
+        return content, content_type
 
 
 # Export the appropriate exception class
