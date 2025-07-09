@@ -17,6 +17,7 @@ from app.processors.claude_ai.token_counter_processor import TokenCounterProcess
 from app.processors.claude_ai.tool_result_processor import ToolResultProcessor
 from app.processors.claude_ai.tool_call_event_processor import ToolCallEventProcessor
 from app.processors.claude_ai.stop_sequences_processor import StopSequencesProcessor
+from app.processors.claude_ai.model_injector_processor import ModelInjectorProcessor
 
 __all__ = [
     "ClaudeAIContext",
@@ -32,4 +33,5 @@ __all__ = [
     "ToolResultProcessor",
     "ToolCallEventProcessor",
     "StopSequencesProcessor",
+    "ModelInjectorProcessor",
 ]
