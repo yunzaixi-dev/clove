@@ -84,6 +84,16 @@ class Settings(BaseSettings):
         env="DEFAULT_LANGUAGE",
         description="Default language code for translations",
     )
+    retry_attempts: int = Field(
+        default=3,
+        env="RETRY_ATTEMPTS",
+        description="Number of retry attempts for failed requests",
+    )
+    retry_interval: int = Field(
+        default=1,
+        env="RETRY_INTERVAL",
+        description="Interval between retry attempts in seconds",
+    )
 
     # Proxy settings
     proxy_url: Optional[str] = Field(default=None, env="PROXY_URL")

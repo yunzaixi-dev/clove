@@ -13,11 +13,13 @@ class AppError(Exception):
         message_key: str,
         status_code: int,
         context: Optional[Dict[str, Any]] = None,
+        retryable: bool = False,
     ):
         self.error_code = error_code
         self.message_key = message_key
         self.status_code = status_code
         self.context = context if context is not None else {}
+        self.retryable = retryable
         super().__init__(
             f"Error Code: {error_code}, Message Key: {message_key}, Context: {self.context}"
         )
@@ -78,6 +80,7 @@ class ClaudeRateLimitedError(AppError):
             message_key="claudeClient.claudeRateLimited",
             status_code=429,
             context=_context,
+            retryable=True,
         )
 
 
@@ -98,6 +101,7 @@ class OrganizationDisabledError(AppError):
             message_key="claudeClient.organizationDisabled",
             status_code=400,
             context=context,
+            retryable=True,
         )
 
 
@@ -146,6 +150,7 @@ class ClaudeHttpError(AppError):
             message_key="claudeClient.httpError",
             status_code=status_code,
             context=_context,
+            retryable=True,
         )
 
 
@@ -222,6 +227,7 @@ class ClaudeStreamingError(AppError):
             message_key="processors.nonStreamingResponseProcessor.streamingError",
             status_code=503,
             context=_context,
+            retryable=True,
         )
 
 
@@ -232,4 +238,5 @@ class NoMessageError(AppError):
             message_key="processors.nonStreamingResponseProcessor.noMessage",
             status_code=503,
             context=context,
+            retryable=True,
         )
