@@ -7,12 +7,12 @@ from tenacity import (
     retry_if_exception_type,
     stop_after_attempt,
     wait_fixed,
-    before_sleep_log,
 )
 from loguru import logger
 import json
 
 from app.core.config import settings
+from app.utils.retry import log_before_sleep
 
 # Try to import curl_cffi, fall back to httpx if not available
 try:
@@ -221,7 +221,7 @@ if CURL_CFFI_AVAILABLE:
             stop=stop_after_attempt(settings.request_retries),
             wait=wait_fixed(settings.request_retry_interval),
             retry=retry_if_exception_type(CurlRequestException),
-            before_sleep=before_sleep_log(logger, "WARNING"),
+            before_sleep=log_before_sleep,
             reraise=True,
         )
         async def request(
@@ -332,7 +332,7 @@ if HTTPX_AVAILABLE:
             stop=stop_after_attempt(settings.request_retries),
             wait=wait_fixed(settings.request_retry_interval),
             retry=retry_if_exception_type(httpx.RequestError),
-            before_sleep=before_sleep_log(logger, "WARNING"),
+            before_sleep=log_before_sleep,
             reraise=True,
         )
         async def request(
