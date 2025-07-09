@@ -1,5 +1,6 @@
 from typing import List, Optional
 
+from app.services.session import SessionManager
 from app.processors.pipeline import ProcessingPipeline
 from app.processors.base import BaseProcessor
 from app.processors.claude_ai import ClaudeAIContext
@@ -66,4 +67,8 @@ class ClaudeAIPipeline(ProcessingPipeline):
         Raises:
             Exception: If any processor fails or no response is generated
         """
-        return await super().process(context)
+        try:
+            return await super().process(context)
+        finally:
+            if context.claude_session:
+                await SessionManager.remove_session(context.claude_session.session_id)
