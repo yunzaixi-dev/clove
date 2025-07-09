@@ -7,11 +7,9 @@ from uuid import uuid4
 
 from app.core.http_client import (
     create_session,
-    RequestException,
     Response,
     AsyncSession,
 )
-from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
 
 from app.core.config import settings
 from app.core.exceptions import (
@@ -65,12 +63,6 @@ class ClaudeWebClient:
 
         return headers
 
-    @retry(
-        stop=stop_after_attempt(settings.request_retries),
-        wait=wait_fixed(settings.request_retry_interval),
-        retry=retry_if_exception_type(RequestException),
-        reraise=True,
-    )
     async def _request(
         self,
         method: str,

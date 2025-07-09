@@ -1,19 +1,12 @@
 from app.core.http_client import (
     Response,
     AsyncSession,
-    RequestException,
     create_session,
 )
 from datetime import datetime, timedelta, UTC
 from typing import Dict
 from loguru import logger
 from fastapi.responses import StreamingResponse
-from tenacity import (
-    retry,
-    stop_after_attempt,
-    retry_if_exception_type,
-    wait_fixed,
-)
 
 from app.models.claude import TextContent
 from app.processors.base import BaseProcessor
@@ -36,12 +29,6 @@ class ClaudeAPIProcessor(BaseProcessor):
             settings.claude_api_baseurl.encoded_string() + "/v1/messages"
         )
 
-    @retry(
-        stop=stop_after_attempt(settings.request_retries),
-        wait=wait_fixed(settings.request_retry_interval),
-        retry=retry_if_exception_type(RequestException),
-        reraise=True,
-    )
     async def _request_messages_api(
         self, session: AsyncSession, request_json: str, headers: Dict[str, str]
     ) -> Response:
