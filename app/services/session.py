@@ -119,12 +119,7 @@ class SessionManager:
         """
         if session_id in self._sessions:
             session = self._sessions[session_id]
-
-            # Release the lock temporarily to avoid blocking during cleanup
-            try:
-                await session.cleanup()
-            except Exception as e:
-                logger.error(f"Error cleaning up session {session_id}: {e}")
+            asyncio.create_task(session.cleanup())  # Cleanup session asynchronously
 
             # Remove from sessions dict (should already have the lock)
             if session_id in self._sessions:
