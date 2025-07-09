@@ -38,13 +38,6 @@ services:
       - LOG_TO_FILE=true
       - LOG_FILE_PATH=/data/logs/app.log
 
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5201/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-
 volumes:
   data:
     driver: local
