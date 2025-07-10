@@ -422,6 +422,10 @@ class AccountManager:
         Args:
             data_folder: Optional data folder path. If not provided, uses settings.data_folder
         """
+        if settings.no_filesystem_mode:
+            logger.debug("No-filesystem mode enabled, skipping account save to disk")
+            return
+            
         settings.data_folder.mkdir(parents=True, exist_ok=True)
 
         accounts_file = settings.data_folder / "accounts.json"
@@ -442,6 +446,10 @@ class AccountManager:
         Args:
             data_folder: Optional data folder path. If not provided, uses settings.data_folder
         """
+        if settings.no_filesystem_mode:
+            logger.debug("No-filesystem mode enabled, skipping account load from disk")
+            return
+            
         accounts_file = settings.data_folder / "accounts.json"
 
         if not accounts_file.exists():

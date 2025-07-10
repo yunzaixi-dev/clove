@@ -72,26 +72,30 @@ async def get_settings(_: AdminAuthDep) -> Settings:
 @router.put("", response_model=SettingsUpdate)
 async def update_settings(_: AdminAuthDep, updates: SettingsUpdate) -> Settings:
     """Update settings and save to config.json."""
-    config_path = settings.data_folder / "config.json"
-    settings.data_folder.mkdir(parents=True, exist_ok=True)
-
-    if os.path.exists(config_path):
-        try:
-            with open(config_path, "r", encoding="utf-8") as f:
-                config_data = SettingsUpdate.model_validate_json(f.read())
-        except (json.JSONDecodeError, IOError):
-            config_data = SettingsUpdate()
-    else:
-        config_data = SettingsUpdate()
-
     update_dict = updates.model_dump(exclude_unset=True)
-    config_data = config_data.model_copy(update=update_dict)
 
-    try:
-        with open(config_path, "w", encoding="utf-8") as f:
-            f.write(config_data.model_dump_json(exclude_unset=True))
-    except IOError as e:
-        raise HTTPException(status_code=500, detail=f"Failed to save config: {str(e)}")
+    if not settings.no_filesystem_mode:
+        config_path = settings.data_folder / "config.json"
+        settings.data_folder.mkdir(parents=True, exist_ok=True)
+
+        if os.path.exists(config_path):
+            try:
+                with open(config_path, "r", encoding="utf-8") as f:
+                    config_data = SettingsUpdate.model_validate_json(f.read())
+            except (json.JSONDecodeError, IOError):
+                config_data = SettingsUpdate()
+        else:
+            config_data = SettingsUpdate()
+
+        config_data = config_data.model_copy(update=update_dict)
+
+        try:
+            with open(config_path, "w", encoding="utf-8") as f:
+                f.write(config_data.model_dump_json(exclude_unset=True))
+        except IOError as e:
+            raise HTTPException(
+                status_code=500, detail=f"Failed to save config: {str(e)}"
+            )
 
     for key, value in update_dict.items():
         if hasattr(settings, key):

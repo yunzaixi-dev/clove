@@ -43,6 +43,10 @@ class Settings(BaseSettings):
     @classmethod
     def _json_config_settings(cls) -> Dict[str, Any]:
         """Load settings from JSON config file in data_folder."""
+        # Check if NO_FILESYSTEM_MODE is enabled
+        if os.environ.get("NO_FILESYSTEM_MODE", "").lower() in ("true", "1", "yes"):
+            return {}
+
         # First get data_folder from env or default
         data_folder = os.environ.get(
             "DATA_FOLDER", str(Path.home() / ".clove" / "data")
@@ -93,6 +97,11 @@ class Settings(BaseSettings):
         default=1,
         env="RETRY_INTERVAL",
         description="Interval between retry attempts in seconds",
+    )
+    no_filesystem_mode: bool = Field(
+        default=False,
+        env="NO_FILESYSTEM_MODE",
+        description="When True, disables all filesystem operations (accounts/settings stored in memory only)",
     )
 
     # Proxy settings
