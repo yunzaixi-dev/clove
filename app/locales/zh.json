@@ -18,7 +18,7 @@
     "organizationDisabled": "您的 Claude AI 账户已被禁用。",
     "httpError": "请求 Claude AI 时发生 HTTP 错误：{error_type} - {error_message}（状态码：{status_code}）",
     "invalidModelName": "提供的模型名称无效。请确保您有权访问 {model_name} 模型。",
-    "authenticationError": "身份验证错误。请检查您的 Claude Cookie 或 OAuth 凭证。"
+    "authenticationError": "身份验证错误。请检查您的 Claude Cookie 或 OAuth 凭证；并确保安装了 curl 依赖且不在 Termux 环境下。"
   },
   "messageProcessor": {
     "noValidMessages": "请求中未找到有效消息。",
