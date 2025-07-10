@@ -39,7 +39,7 @@ class OAuthCodeExchange(BaseModel):
 
 
 class AccountResponse(BaseModel):
-    organization_uuid: UUID
+    organization_uuid: str
     capabilities: Optional[List[str]]
     cookie_value: Optional[str] = Field(None, description="Masked cookie value")
     status: AccountStatus
