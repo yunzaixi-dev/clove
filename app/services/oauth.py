@@ -87,19 +87,30 @@ class OAuthAuthenticator:
             response = await self._request("GET", url, headers=headers)
 
             org_data = response.json()
-            if org_data and len(org_data) > 0:
-                organization_uuid = org_data[0].get("uuid")
-                capabilities = org_data[0].get("capabilities")
+            if org_data and isinstance(org_data, list):
+                organization_uuid = None
+                max_capabilities = []
 
-                if not organization_uuid or not capabilities:
-                    raise OrganizationInfoError(
-                        reason="Missing organization UUID or capabilities"
+                for org in org_data:
+                    if "uuid" in org and "capabilities" in org:
+                        capabilities = org.get("capabilities", [])
+
+                        if "chat" not in capabilities:
+                            continue
+
+                        if len(capabilities) > len(max_capabilities):
+                            organization_uuid = org.get("uuid")
+                            max_capabilities = capabilities
+
+                if organization_uuid:
+                    logger.info(
+                        f"Found organization UUID: {organization_uuid}, capabilities: {max_capabilities}"
                     )
+                    return organization_uuid, max_capabilities
 
-                logger.debug(
-                    f"Got organization UUID: {organization_uuid}, capabilities: {capabilities}"
+                raise OrganizationInfoError(
+                    reason="No valid organization found with chat capabilities"
                 )
-                return organization_uuid, capabilities
 
             else:
                 logger.error("No organization data found in response")
