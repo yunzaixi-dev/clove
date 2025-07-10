@@ -7,8 +7,10 @@
   "accountManager": {
     "noAccountsAvailable": "No accounts are currently available. Please try again later."
   },
-  "accounts": {
-    "oauthExchangeError": "Failed to exchange authorization code for tokens."
+  "oauthService": {
+    "oauthExchangeError": "Failed to exchange authorization code for tokens.",
+    "organizationInfoError": "Failed to get organization Info: {reason}",
+    "cookieAuthorizationError": "Failed to authorize with cookie: {reason}"
   },
   "claudeClient": {
     "claudeRateLimited": "Claude AI rate limit exceeded. Please try again after {resets_at}.",

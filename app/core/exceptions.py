@@ -154,16 +154,6 @@ class ClaudeHttpError(AppError):
         )
 
 
-class OAuthExchangeError(AppError):
-    def __init__(self, context: Optional[Dict[str, Any]] = None):
-        super().__init__(
-            error_code=400140,
-            message_key="accounts.oauthExchangeError",
-            status_code=400,
-            context=context,
-        )
-
-
 class NoValidMessagesError(AppError):
     def __init__(self, context: Optional[Dict[str, Any]] = None):
         super().__init__(
@@ -205,6 +195,42 @@ class NoResponseError(AppError):
             message_key="pipeline.noResponse",
             status_code=503,
             context=context,
+        )
+
+
+class OAuthExchangeError(AppError):
+    def __init__(self, reason: str, context: Optional[Dict[str, Any]] = None):
+        _context = context.copy() if context else {}
+        _context["reason"] = reason or "Unknown"
+        super().__init__(
+            error_code=400180,
+            message_key="oauthService.oauthExchangeError",
+            status_code=400,
+            context=_context,
+        )
+
+
+class OrganizationInfoError(AppError):
+    def __init__(self, reason: str, context: Optional[Dict[str, Any]] = None):
+        _context = context.copy() if context else {}
+        _context["reason"] = reason or "Unknown"
+        super().__init__(
+            error_code=503181,
+            message_key="oauthService.organizationInfoError",
+            status_code=503,
+            context=_context,
+        )
+
+
+class CookieAuthorizationError(AppError):
+    def __init__(self, reason: str, context: Optional[Dict[str, Any]] = None):
+        _context = context.copy() if context else {}
+        _context["reason"] = reason or "Unknown"
+        super().__init__(
+            error_code=400182,
+            message_key="oauthService.cookieAuthorizationError",
+            status_code=400,
+            context=_context,
         )
 
 

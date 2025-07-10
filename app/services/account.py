@@ -351,9 +351,14 @@ class AccountManager:
             logger.warning(
                 f"Failed to refresh OAuth token for account: {account.organization_uuid[:8]}..."
             )
-            # Downgrade to cookie-only if refresh fails
-            account.auth_type = AuthType.COOKIE_ONLY
-            account.oauth_token = None
+            if account.auth_type == AuthType.BOTH:
+                account.auth_type = AuthType.COOKIE_ONLY
+                account.oauth_token = None
+            else:
+                account.status = AccountStatus.INVALID
+                logger.error(
+                    f"Account {account.organization_uuid[:8]} is now invalid due to OAuth refresh failure"
+                )
             self.save_accounts()
 
     async def _attempt_oauth_authentication(self, account: Account) -> None:

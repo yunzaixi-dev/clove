@@ -11,9 +11,13 @@ from loguru import logger
 from app.core.config import settings
 from app.core.account import Account, AuthType, OAuthToken
 from app.core.exceptions import (
+    AppError,
     ClaudeAuthenticationError,
     ClaudeHttpError,
     CloudflareBlockedError,
+    CookieAuthorizationError,
+    OAuthExchangeError,
+    OrganizationInfoError,
 )
 
 
@@ -74,9 +78,7 @@ class OAuthAuthenticator:
 
         return response
 
-    async def get_organization_info(
-        self, cookie: str
-    ) -> Optional[Tuple[str, List[str]]]:
+    async def get_organization_info(self, cookie: str) -> Tuple[str, List[str]]:
         """Get organization UUID and capabilities."""
         url = f"{settings.claude_ai_url.encoded_string()}/api/organizations"
         headers = self._build_headers(cookie)
@@ -87,20 +89,35 @@ class OAuthAuthenticator:
             org_data = response.json()
             if org_data and len(org_data) > 0:
                 organization_uuid = org_data[0].get("uuid")
-                capabilities = org_data[0].get("capabilities", [])
-                logger.debug(f"Got organization UUID: {organization_uuid}")
+                capabilities = org_data[0].get("capabilities")
+
+                if not organization_uuid or not capabilities:
+                    raise OrganizationInfoError(
+                        reason="Missing organization UUID or capabilities"
+                    )
+
+                logger.debug(
+                    f"Got organization UUID: {organization_uuid}, capabilities: {capabilities}"
+                )
                 return organization_uuid, capabilities
+
+            else:
+                logger.error("No organization data found in response")
+                raise OrganizationInfoError(reason="No organization data found")
+
+        except AppError as e:
+            raise e
 
         except Exception as e:
             logger.error(f"Error getting organization UUID: {e}")
-            raise e
+            raise OrganizationInfoError(reason=str(e))
 
     async def authorize_with_cookie(
         self, cookie: str, organization_uuid: str
-    ) -> Optional[Tuple[str, str]]:
+    ) -> Tuple[str, str]:
         """
         Use Cookie to automatically get authorization code.
-        Returns: (authorization code, verifier) or None if failed
+        Returns: (authorization code, verifier)
         """
         verifier, challenge = self._generate_pkce()
         state = (
@@ -127,46 +144,43 @@ class OAuthAuthenticator:
         headers = self._build_headers(cookie)
         headers["Content-Type"] = "application/json"
 
-        try:
-            logger.debug(f"Requesting authorization from: {authorize_url}")
+        logger.debug(f"Requesting authorization from: {authorize_url}")
 
-            response = await self._request(
-                "POST", authorize_url, json=payload, headers=headers
+        response = await self._request(
+            "POST", authorize_url, json=payload, headers=headers
+        )
+
+        auth_response = response.json()
+        redirect_uri = auth_response.get("redirect_uri")
+
+        if not redirect_uri:
+            logger.error("No redirect_uri in authorization response")
+            raise CookieAuthorizationError(reason="No redirect URI found in response")
+
+        logger.info(f"Got redirect URI: {redirect_uri}")
+
+        parsed_url = urlparse(redirect_uri)
+        query_params = parse_qs(parsed_url.query)
+
+        if "code" not in query_params:
+            logger.error("No authorization code in redirect_uri")
+            raise CookieAuthorizationError(
+                reason="No authorization code found in response"
             )
 
-            auth_response = response.json()
-            redirect_uri = auth_response.get("redirect_uri")
+        auth_code = query_params["code"][0]
+        response_state = query_params.get("state", [None])[0]
 
-            if not redirect_uri:
-                logger.error("No redirect_uri in authorization response")
-                return None
+        logger.info(f"Extracted authorization code: {auth_code[:20]}...")
 
-            logger.info(f"Got redirect URI: {redirect_uri}")
+        if response_state:
+            full_code = f"{auth_code}#{response_state}"
+        else:
+            full_code = auth_code
 
-            parsed_url = urlparse(redirect_uri)
-            query_params = parse_qs(parsed_url.query)
+        return full_code, verifier
 
-            if "code" not in query_params:
-                logger.error("No authorization code in redirect_uri")
-                return None
-
-            auth_code = query_params["code"][0]
-            response_state = query_params.get("state", [None])[0]
-
-            logger.info(f"Extracted authorization code: {auth_code[:20]}...")
-
-            if response_state:
-                full_code = f"{auth_code}#{response_state}"
-            else:
-                full_code = auth_code
-
-            return full_code, verifier
-
-        except Exception as e:
-            logger.error(f"Error during authorization: {e}")
-            return None
-
-    async def exchange_token(self, code: str, verifier: str) -> Optional[Dict]:
+    async def exchange_token(self, code: str, verifier: str) -> Dict:
         """Exchange authorization code for access token."""
         parts = code.split("#")
         auth_code = parts[0]
@@ -191,16 +205,24 @@ class OAuthAuthenticator:
                 headers={"Content-Type": "application/json"},
             )
 
-            if response.status_code != 200:
-                logger.error(f"Token exchange failed: {response.status_code}")
-                return None
-
             token_data = response.json()
+
+            if (
+                "access_token" not in token_data
+                or "refresh_token" not in token_data
+                or "expires_in" not in token_data
+            ):
+                logger.error("Invalid token response received")
+                raise OAuthExchangeError(reason="Invalid token response")
+
             return token_data
+
+        except AppError as e:
+            raise e
 
         except Exception as e:
             logger.error(f"Error exchanging token: {e}")
-            return None
+            raise OAuthExchangeError(reason=str(e))
 
     async def refresh_access_token(self, refresh_token: str) -> Optional[Dict]:
         """Refresh access token."""
@@ -241,25 +263,16 @@ class OAuthAuthenticator:
         try:
             # Get organization UUID
             org_uuid, _ = await self.get_organization_info(account.cookie_value)
-            if not org_uuid:
-                logger.error("Failed to get organization UUID")
-                return False
 
             # Get authorization code
             auth_result = await self.authorize_with_cookie(
                 account.cookie_value, org_uuid
             )
-            if not auth_result:
-                logger.error("Failed to get authorization code")
-                return False
 
             auth_code, verifier = auth_result
 
             # Exchange for tokens
             token_data = await self.exchange_token(auth_code, verifier)
-            if not token_data:
-                logger.error("Failed to exchange tokens")
-                return False
 
             # Update account with OAuth tokens
             account.oauth_token = OAuthToken(
