@@ -125,17 +125,11 @@ class ClaudeWebClient:
                 error_message=error_message,
             )
 
-    async def get_organizations(self) -> Dict[str, Any]:
-        """Get user organizations."""
-        url = urljoin(self.endpoint, "/api/organizations")
-        response = await self._request("GET", url)
-        return response.json()
-
-    async def create_conversation(self, org_uuid: str) -> str:
+    async def create_conversation(self) -> str:
         """Create a new conversation."""
         url = urljoin(
             self.endpoint,
-            f"/api/organizations/{org_uuid}/chat_conversations",
+            f"/api/organizations/{self.account.organization_uuid}/chat_conversations",
         )
 
         uuid = uuid4()
@@ -153,23 +147,21 @@ class ClaudeWebClient:
 
         return conv_uuid, paprika_mode
 
-    async def set_paprika_mode(
-        self, org_uuid: str, conv_uuid: str, mode: Optional[str]
-    ) -> None:
+    async def set_paprika_mode(self, conv_uuid: str, mode: Optional[str]) -> None:
         """Set the conversation mode."""
         url = urljoin(
             self.endpoint,
-            f"/api/organizations/{org_uuid}/chat_conversations/{conv_uuid}",
+            f"/api/organizations/{self.account.organization_uuid}/chat_conversations/{conv_uuid}",
         )
         payload = {"settings": {"paprika_mode": mode}}
         await self._request("PUT", url, json=payload)
         logger.debug(f"Set conversation {conv_uuid} mode: {mode}")
 
     async def upload_file(
-        self, file_data: bytes, filename: str, content_type: str, org_uuid: str
+        self, file_data: bytes, filename: str, content_type: str
     ) -> str:
         """Upload a file and return file UUID."""
-        url = urljoin(self.endpoint, f"/api/{org_uuid}/upload")
+        url = urljoin(self.endpoint, f"/api/{self.account.organization_uuid}/upload")
         files = {"file": (filename, file_data, content_type)}
 
         response = await self._request("POST", url, files=files)
@@ -177,13 +169,11 @@ class ClaudeWebClient:
         data = UploadResponse.model_validate(response.json())
         return data.file_uuid
 
-    async def send_message(
-        self, payload: Dict[str, Any], org_uuid: str, conv_uuid: str
-    ) -> Response:
+    async def send_message(self, payload: Dict[str, Any], conv_uuid: str) -> Response:
         """Send a message and return the response."""
         url = urljoin(
             self.endpoint,
-            f"/api/organizations/{org_uuid}/chat_conversations/{conv_uuid}/completion",
+            f"/api/organizations/{self.account.organization_uuid}/chat_conversations/{conv_uuid}/completion",
         )
 
         headers = {
@@ -196,25 +186,23 @@ class ClaudeWebClient:
 
         return response
 
-    async def send_tool_result(
-        self, payload: Dict[str, Any], org_uuid: str, conv_uuid: str
-    ):
+    async def send_tool_result(self, payload: Dict[str, Any], conv_uuid: str):
         """Send tool result to Claude.ai."""
         url = urljoin(
             self.endpoint,
-            f"/api/organizations/{org_uuid}/chat_conversations/{conv_uuid}/tool_result",
+            f"/api/organizations/{self.account.organization_uuid}/chat_conversations/{conv_uuid}/tool_result",
         )
 
         await self._request("POST", url, conv_uuid=conv_uuid, json=payload)
 
-    async def delete_conversation(self, org_uuid: str, conv_uuid: str) -> None:
+    async def delete_conversation(self, conv_uuid: str) -> None:
         """Delete a conversation."""
         if not conv_uuid:
             return
 
         url = urljoin(
             self.endpoint,
-            f"/api/organizations/{org_uuid}/chat_conversations/{conv_uuid}",
+            f"/api/organizations/{self.account.organization_uuid}/chat_conversations/{conv_uuid}",
         )
         try:
             await self._request("DELETE", url, conv_uuid=conv_uuid)

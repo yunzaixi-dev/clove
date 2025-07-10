@@ -5,7 +5,6 @@ from loguru import logger
 
 from app.core.config import settings
 from app.core.external.claude_client import ClaudeWebClient
-from app.models.internal import ConversationState
 from app.services.account import account_manager
 
 
@@ -13,7 +12,8 @@ class ClaudeWebSession:
     def __init__(self, session_id: str):
         self.session_id = session_id
         self.last_activity = datetime.now()
-        self.conversation_state = ConversationState()
+        self.conv_uuid: Optional[str] = None
+        self.paprika_mode: Optional[str] = None
         self.sse_stream: Optional[AsyncIterator[str]] = None
 
     async def initialize(self):
@@ -47,40 +47,18 @@ class ClaudeWebSession:
         logger.debug(f"Cleaning up session {self.session_id}")
 
         # Delete conversation if exists
-        if (
-            self.conversation_state.org_uuid
-            and self.conversation_state.conv_uuid
-            and not settings.preserve_chats
-        ):
-            await self.client.delete_conversation(
-                self.conversation_state.org_uuid, self.conversation_state.conv_uuid
-            )
+        if self.conv_uuid and not settings.preserve_chats:
+            await self.client.delete_conversation(self.conv_uuid)
 
         await account_manager.release_session(self.session_id)
         await self.client.cleanup()
 
-    async def _ensure_organization_initialized(self) -> None:
-        """Ensure organization is initialized. Extract common initialization logic."""
-        if not self.conversation_state.org_uuid:
-            org_data = await self.client.get_organizations()
-            if org_data and len(org_data) > 0:
-                org = org_data[0]
-                self.conversation_state.org_uuid = org.get("uuid")
-                self.conversation_state.capabilities = org.get("capabilities", [])
-                logger.info(
-                    f"Got org: {self.conversation_state.org_uuid}, pro: {self.conversation_state.is_pro}"
-                )
-
     async def _ensure_conversation_initialized(self) -> None:
         """Ensure conversation is initialized. Create if not exists."""
-        await self._ensure_organization_initialized()
-
-        if not self.conversation_state.conv_uuid:
-            conv_uuid, paprika_mode = await self.client.create_conversation(
-                self.conversation_state.org_uuid
-            )
-            self.conversation_state.conv_uuid = conv_uuid
-            self.conversation_state.paprika_mode = paprika_mode
+        if not self.conv_uuid:
+            conv_uuid, paprika_mode = await self.client.create_conversation()
+            self.conv_uuid = conv_uuid
+            self.paprika_mode = paprika_mode
 
     def update_activity(self):
         """Update last activity timestamp."""
@@ -94,8 +72,7 @@ class ClaudeWebSession:
 
         response = await self.client.send_message(
             payload,
-            org_uuid=self.conversation_state.org_uuid,
-            conv_uuid=self.conversation_state.conv_uuid,
+            conv_uuid=self.conv_uuid,
         )
         self.sse_stream = self.stream(response)
 
@@ -106,34 +83,23 @@ class ClaudeWebSession:
         self, file_data: bytes, filename: str, content_type: str
     ) -> str:
         """Upload a file and return file UUID."""
-        await self._ensure_organization_initialized()
-
-        return await self.client.upload_file(
-            file_data, filename, content_type, self.conversation_state.org_uuid
-        )
+        return await self.client.upload_file(file_data, filename, content_type)
 
     async def send_tool_result(self, payload: Dict[str, Any]) -> None:
         """Send tool result to Claude.ai."""
-        if (
-            not self.conversation_state.org_uuid
-            or not self.conversation_state.conv_uuid
-        ):
+        if not self.conv_uuid:
             raise ValueError(
                 "Session must have an active conversation to send tool results"
             )
 
-        await self.client.send_tool_result(
-            payload, self.conversation_state.org_uuid, self.conversation_state.conv_uuid
-        )
+        await self.client.send_tool_result(payload, self.conv_uuid)
 
     async def set_paprika_mode(self, mode: Optional[str]) -> None:
         """Set the conversation mode."""
         await self._ensure_conversation_initialized()
 
-        if self.conversation_state.paprika_mode == mode:
+        if self.paprika_mode == mode:
             return
 
-        await self.client.set_paprika_mode(
-            self.conversation_state.org_uuid, self.conversation_state.conv_uuid, mode
-        )
-        self.conversation_state.paprika_mode = mode
+        await self.client.set_paprika_mode(self.conv_uuid, mode)
+        self.paprika_mode = mode

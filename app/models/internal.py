@@ -31,22 +31,5 @@ class ClaudeWebRequest(BaseModel):
     tools: List[Tool] = Field(default_factory=list)
 
 
-class ConversationState(BaseModel):
-    org_uuid: Optional[str] = None
-    conv_uuid: Optional[str] = None
-    paprika_mode: Optional[str] = None
-    capabilities: List[str] = Field(default_factory=list)
-
-    @property
-    def is_pro(self) -> bool:
-        """Check if user has pro capabilities."""
-        pro_keywords = ["pro", "enterprise", "raven", "max"]
-        return any(
-            keyword in cap.lower()
-            for cap in self.capabilities
-            for keyword in pro_keywords
-        )
-
-
 class UploadResponse(BaseModel):
     file_uuid: str
