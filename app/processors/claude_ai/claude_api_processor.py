@@ -84,14 +84,25 @@ class ClaudeAPIProcessor(BaseProcessor):
                     session, request_json, headers
                 )
 
+                resets_at = response.headers.get("anthropic-ratelimit-unified-reset")
+                if resets_at:
+                    try:
+                        resets_at = int(resets_at)
+                        account.resets_at = datetime.fromtimestamp(resets_at, tz=UTC)
+                    except ValueError:
+                        logger.error(
+                            f"Invalid resets_at format from Claude API: {resets_at}"
+                        )
+                        account.resets_at = None
+
                 # Handle rate limiting
                 if response.status_code == 429:
-                    now = datetime.now(UTC)
-                    next_hour = now.replace(
+                    next_hour = datetime.now(UTC).replace(
                         minute=0, second=0, microsecond=0
                     ) + timedelta(hours=1)
-                    logger.warning(f"Rate limited by Claude API, resets at {next_hour}")
-                    raise ClaudeRateLimitedError(resets_at=next_hour)
+                    raise ClaudeRateLimitedError(
+                        resets_at=account.resets_at or next_hour
+                    )
 
                 if response.status_code >= 400:
                     error_data = await response.ajson()
