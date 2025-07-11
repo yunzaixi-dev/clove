@@ -155,7 +155,10 @@ class ClaudeAPIProcessor(BaseProcessor):
         )
 
         if isinstance(request.system, str):
-            request.system = [system_message, TextContent(text=request.system)]
+            request.system = [
+                system_message,
+                TextContent(type="text", text=request.system),
+            ]
         elif isinstance(request.system, list):
             request.system = [system_message] + request.system
         else:
