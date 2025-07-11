@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Optional, AsyncIterator
 
-from app.core.calude_session import ClaudeWebSession
+from app.core.claude_session import ClaudeWebSession
 from app.models.claude import Message, MessagesAPIRequest
 from app.models.internal import ClaudeWebRequest
 from app.models.streaming import StreamingEvent

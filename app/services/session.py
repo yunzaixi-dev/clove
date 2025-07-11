@@ -5,7 +5,7 @@ import threading
 from loguru import logger
 
 from app.core.config import settings
-from app.core.calude_session import ClaudeWebSession
+from app.core.claude_session import ClaudeWebSession
 
 
 class SessionManager:
