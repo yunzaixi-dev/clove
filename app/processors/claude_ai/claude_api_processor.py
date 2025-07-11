@@ -159,11 +159,10 @@ class ClaudeAPIProcessor(BaseProcessor):
         request = context.messages_api_request
 
         # Handle system field
-        system_message = TextContent(
-            type="text",
-            text=settings.custom_prompt
-            or "You are Claude Code, Anthropic's official CLI for Claude.",
+        system_message_text = (
+            "You are Claude Code, Anthropic's official CLI for Claude."
         )
+        system_message = TextContent(type="text", text=system_message_text)
 
         if isinstance(request.system, str):
             request.system = [
@@ -171,7 +170,10 @@ class ClaudeAPIProcessor(BaseProcessor):
                 TextContent(type="text", text=request.system),
             ]
         elif isinstance(request.system, list):
-            request.system = [system_message] + request.system
+            if request.system and request.system[0].text == system_message_text:
+                logger.debug("System message already exists, skipping injection.")
+            else:
+                request.system = [system_message] + request.system
         else:
             request.system = [system_message]
 
