@@ -121,10 +121,17 @@ class ClaudeAPIProcessor(BaseProcessor):
 
                     await session.close()
 
+                filtered_headers = {}
+                for key, value in response.headers.items():
+                    if key.lower() in ["content-encoding", "content-length"]:
+                        logger.debug(f"Filtering out header: {key}: {value}")
+                        continue
+                    filtered_headers[key] = value
+
                 context.response = StreamingResponse(
                     stream_response(),
                     status_code=response.status_code,
-                    headers=response.headers,
+                    headers=filtered_headers,
                 )
 
                 # Stop pipeline on success
