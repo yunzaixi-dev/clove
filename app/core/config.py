@@ -213,6 +213,18 @@ class Settings(BaseSettings):
         description="Interval for cleaning up expired tool calls in seconds",
     )
 
+    # Cache settings
+    cache_timeout: int = Field(
+        default=300,
+        env="CACHE_TIMEOUT",
+        description="Timeout for cache checkpoints in seconds (default: 5 minutes)",
+    )
+    cache_cleanup_interval: int = Field(
+        default=60,
+        env="CACHE_CLEANUP_INTERVAL",
+        description="Interval for cleaning up expired cache checkpoints in seconds",
+    )
+
     # Claude OAuth settings
     oauth_client_id: str = Field(
         default="9d1c250a-e61b-44d9-88ed-5944d1962f5e",

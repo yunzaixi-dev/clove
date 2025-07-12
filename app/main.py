@@ -12,6 +12,7 @@ from app.utils.logger import configure_logger
 from app.services.account import account_manager
 from app.services.session import session_manager
 from app.services.tool_call import tool_call_manager
+from app.services.cache import cache_service
 
 
 @asynccontextmanager
@@ -31,6 +32,7 @@ async def lifespan(app: FastAPI):
     await account_manager.start_task()
     await session_manager.start_cleanup_task()
     await tool_call_manager.start_cleanup_task()
+    await cache_service.start_cleanup_task()
 
     yield
 
@@ -43,6 +45,7 @@ async def lifespan(app: FastAPI):
     await account_manager.stop_task()
     await session_manager.cleanup_all()
     await tool_call_manager.cleanup_all()
+    await cache_service.cleanup_all()
 
 
 app = FastAPI(
