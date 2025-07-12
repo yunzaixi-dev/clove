@@ -105,7 +105,7 @@ class ClaudeAPIProcessor(BaseProcessor):
                     )
 
                 if response.status_code >= 400:
-                    error_data = await response.ajson()
+                    error_data = await response.json()
 
                     if (
                         response.status_code == 400

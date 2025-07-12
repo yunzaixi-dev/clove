@@ -90,10 +90,7 @@ class ClaudeWebClient:
                 raise CloudflareBlockedError()
 
             try:
-                if stream:
-                    error_data = await response.ajson()
-                else:
-                    error_data = response.json()
+                error_data = await response.json()
                 error_body = error_data.get("error", {})
                 error_message = error_body.get("message", "Unknown error")
                 error_type = error_body.get("type", "unknown")
@@ -140,7 +137,7 @@ class ClaudeWebClient:
         }
         response = await self._request("POST", url, json=payload)
 
-        data = response.json()
+        data = await response.json()
         conv_uuid = data.get("uuid")
         paprika_mode = data.get("settings", {}).get("paprika_mode")
         logger.info(f"Created conversation: {conv_uuid}")
@@ -166,7 +163,7 @@ class ClaudeWebClient:
 
         response = await self._request("POST", url, files=files)
 
-        data = UploadResponse.model_validate(response.json())
+        data = UploadResponse.model_validate(await response.json())
         return data.file_uuid
 
     async def send_message(self, payload: Dict[str, Any], conv_uuid: str) -> Response:

@@ -86,7 +86,7 @@ class OAuthAuthenticator:
         try:
             response = await self._request("GET", url, headers=headers)
 
-            org_data = response.json()
+            org_data = await response.json()
             if org_data and isinstance(org_data, list):
                 organization_uuid = None
                 max_capabilities = []
@@ -161,7 +161,7 @@ class OAuthAuthenticator:
             "POST", authorize_url, json=payload, headers=headers
         )
 
-        auth_response = response.json()
+        auth_response = await response.json()
         redirect_uri = auth_response.get("redirect_uri")
 
         if not redirect_uri:
@@ -216,7 +216,7 @@ class OAuthAuthenticator:
                 headers={"Content-Type": "application/json"},
             )
 
-            token_data = response.json()
+            token_data = await response.json()
 
             if (
                 "access_token" not in token_data
@@ -255,7 +255,7 @@ class OAuthAuthenticator:
                 logger.error(f"Token refresh failed: {response.status_code}")
                 return None
 
-            token_data = response.json()
+            token_data = await response.json()
             return token_data
 
         except Exception as e:

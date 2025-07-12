@@ -14,7 +14,15 @@ import json
 from app.core.config import settings
 from app.utils.retry import log_before_sleep
 
-# Try to import curl_cffi, fall back to httpx if not available
+try:
+    import rnet
+    from rnet import Client as RnetClient, Method as RnetMethod
+    from rnet.exceptions import RequestError as RnetRequestError
+
+    RNET_AVAILABLE = True
+except ImportError:
+    RNET_AVAILABLE = False
+
 try:
     from curl_cffi.requests import (
         AsyncSession as CurlAsyncSession,
@@ -35,9 +43,9 @@ try:
 except ImportError:
     HTTPX_AVAILABLE = False
 
-if not CURL_CFFI_AVAILABLE and not HTTPX_AVAILABLE:
+if not RNET_AVAILABLE and not CURL_CFFI_AVAILABLE and not HTTPX_AVAILABLE:
     raise ImportError(
-        "Neither curl_cffi nor httpx is installed. Please install at least one of them."
+        "Neither rnet, curl_cffi nor httpx is installed. Please install at least one of them."
     )
 
 
@@ -51,13 +59,8 @@ class Response(ABC):
         pass
 
     @abstractmethod
-    def json(self) -> Any:
+    async def json(self) -> Any:
         """Parse response as JSON."""
-        pass
-
-    @abstractmethod
-    async def ajson(self) -> Any:
-        """Parse response as JSON asynchronously."""
         pass
 
     @property
@@ -77,19 +80,20 @@ class CurlResponseWrapper(Response):
 
     def __init__(self, response: "CurlResponse", stream: bool = False):
         self._response = response
+        self._stream = stream
 
     @property
     def status_code(self) -> int:
         return self._response.status_code
 
-    def json(self) -> Any:
-        return self._response.json()
-
-    async def ajson(self) -> Any:
-        content = ""
-        async for chunk in self._response.aiter_content():
-            content += chunk.decode("utf-8")
-        return json.loads(content)
+    async def json(self) -> Any:
+        if self._stream:
+            content = ""
+            async for chunk in self._response.aiter_content():
+                content += chunk.decode("utf-8")
+            return json.loads(content)
+        else:
+            return self._response.json()
 
     @property
     def headers(self) -> Dict[str, str]:
@@ -113,10 +117,7 @@ class HttpxResponse(Response):
     def status_code(self) -> int:
         return self._response.status_code
 
-    def json(self) -> Any:
-        return self._response.json()
-
-    async def ajson(self) -> Any:
+    async def json(self) -> Any:
         await self._response.aread()
         return self._response.json()
 
@@ -130,6 +131,39 @@ class HttpxResponse(Response):
         async for chunk in self._response.aiter_bytes(chunk_size):
             yield chunk
         await self._response.aclose()
+
+
+if RNET_AVAILABLE:
+
+    class RnetResponse(Response):
+        """rnet response wrapper."""
+
+        def __init__(self, response: "rnet.Response"):
+            self._response = response
+
+        @property
+        def status_code(self) -> int:
+            return self._response.status
+
+        async def json(self) -> Any:
+            return await self._response.json()
+
+        @property
+        def headers(self) -> Dict[str, str]:
+            headers_dict = {}
+            for key, value in self._response.headers.items():
+                key_str = key.decode("utf-8") if isinstance(key, bytes) else key
+                value_str = value.decode("utf-8") if isinstance(value, bytes) else value
+                headers_dict[key_str] = value_str
+            return headers_dict
+
+        async def aiter_bytes(
+            self, chunk_size: Optional[int] = None
+        ) -> AsyncIterator[bytes]:
+            async with self._response.stream() as streamer:
+                async for chunk in streamer:
+                    yield chunk
+            await self._response.close()
 
 
 class AsyncSession(ABC):
@@ -173,9 +207,6 @@ if CURL_CFFI_AVAILABLE:
             proxy: Optional[str] = settings.proxy_url,
             follow_redirects: bool = True,
         ):
-            if not CURL_CFFI_AVAILABLE:
-                raise ImportError("curl_cffi is not installed")
-
             self._session = CurlAsyncSession(
                 timeout=timeout,
                 impersonate=impersonate,
@@ -255,13 +286,150 @@ if CURL_CFFI_AVAILABLE:
                     stream=stream,
                     **kwargs,
                 )
-                return CurlResponseWrapper(response)
+                return CurlResponseWrapper(response, stream=stream)
             finally:
                 if multipart:
                     multipart.close()
 
         async def close(self):
             await self._session.close()
+
+
+if RNET_AVAILABLE:
+
+    class RnetAsyncSession(AsyncSession):
+        """rnet async session wrapper."""
+
+        def __init__(
+            self,
+            timeout: int = settings.request_timeout,
+            impersonate: str = "chrome",
+            proxy: Optional[str] = settings.proxy_url,
+            follow_redirects: bool = True,
+        ):
+            # Map impersonate string to rnet Impersonate enum
+            impersonate_map = {
+                "chrome": rnet.Impersonate.Chrome136,
+                "firefox": rnet.Impersonate.Firefox136,
+                "safari": rnet.Impersonate.Safari18,
+                "edge": rnet.Impersonate.Edge134,
+            }
+
+            # Use Chrome as default if not found in map
+            rnet_impersonate = impersonate_map.get(
+                impersonate.lower(), rnet.Impersonate.Chrome136
+            )
+
+            # Create proxy list if proxy is provided
+            proxies = None
+            if proxy:
+                proxies = [rnet.Proxy.all(proxy)]
+
+            self._client = RnetClient(
+                impersonate=rnet_impersonate,
+                timeout=timeout,
+                proxies=proxies,
+                allow_redirects=follow_redirects,
+            )
+
+        @retry(
+            stop=stop_after_attempt(settings.request_retries),
+            wait=wait_fixed(settings.request_retry_interval),
+            retry=retry_if_exception_type(RnetRequestError),
+            before_sleep=log_before_sleep,
+            reraise=True,
+        )
+        async def request(
+            self,
+            method: str,
+            url: str,
+            headers: Optional[Dict[str, str]] = None,
+            json: Optional[Any] = None,
+            data: Optional[Any] = None,
+            stream: bool = False,
+            **kwargs,
+        ) -> Response:
+            logger.debug(f"Making {method} request to {url}")
+
+            # Map method string to rnet Method enum
+            method_map = {
+                "GET": RnetMethod.GET,
+                "POST": RnetMethod.POST,
+                "PUT": RnetMethod.PUT,
+                "DELETE": RnetMethod.DELETE,
+                "PATCH": RnetMethod.PATCH,
+                "HEAD": RnetMethod.HEAD,
+                "OPTIONS": RnetMethod.OPTIONS,
+                "TRACE": RnetMethod.TRACE,
+            }
+
+            rnet_method = method_map.get(method.upper(), RnetMethod.GET)
+
+            # Handle file uploads - convert files parameter to multipart
+            files = kwargs.pop("files", None)
+            multipart = None
+
+            if files:
+                # Convert files dict to rnet Multipart
+                parts = []
+                for field_name, file_info in files.items():
+                    if isinstance(file_info, tuple):
+                        # Format: {"field": (filename, data, content_type)}
+                        if len(file_info) >= 3:
+                            filename, file_data, content_type = file_info[:3]
+                        elif len(file_info) == 2:
+                            filename, file_data = file_info
+                            content_type = "application/octet-stream"
+                        else:
+                            raise ValueError(
+                                f"Invalid file tuple format for field {field_name}"
+                            )
+
+                        parts.append(
+                            rnet.Part(
+                                name=field_name,
+                                value=file_data,
+                                filename=filename,
+                                mime=content_type,
+                            )
+                        )
+                    else:
+                        # Simple format: {"field": data}
+                        parts.append(rnet.Part(name=field_name, value=file_info))
+
+                multipart = rnet.Multipart(*parts)
+                kwargs["multipart"] = multipart
+
+            request_kwargs = {}
+            if headers:
+                request_kwargs["headers"] = headers
+            if json is not None:
+                request_kwargs["json"] = json
+            elif data is not None:
+                # rnet uses 'form' for form data, 'body' for raw data
+                if isinstance(data, dict) or isinstance(data, list):
+                    request_kwargs["form"] = (
+                        [(k, v) for k, v in data.items()]
+                        if isinstance(data, dict)
+                        else data
+                    )
+                else:
+                    request_kwargs["body"] = data
+
+            request_kwargs.update(kwargs)
+
+            response = await self._client.request(
+                method=rnet_method,
+                url=url,
+                **request_kwargs,
+            )
+
+            return RnetResponse(response)
+
+        async def close(self):
+            # rnet Client doesn't have an explicit close method
+            # The connection pooling is handled internally
+            pass
 
 
 if HTTPX_AVAILABLE:
@@ -276,22 +444,10 @@ if HTTPX_AVAILABLE:
             proxy: Optional[str] = settings.proxy_url,
             follow_redirects: bool = True,
         ):
-            if not HTTPX_AVAILABLE:
-                raise ImportError("httpx is not installed")
-
-            # Create a custom SSL context that doesn't verify certificates
-            # Note: This should only be used for development/testing with trusted proxies
-            import ssl
-
-            ssl_context = ssl.create_default_context()
-            ssl_context.check_hostname = False
-            ssl_context.verify_mode = ssl.CERT_NONE
-
             self._client = httpx.AsyncClient(
                 timeout=timeout,
                 proxy=proxy,
                 follow_redirects=follow_redirects,
-                verify=ssl_context,  # Use custom SSL context
             )
 
         async def stream(
@@ -370,32 +526,41 @@ if HTTPX_AVAILABLE:
         async def close(self):
             await self._client.aclose()
 
-    def create_session(
-        timeout: int = settings.request_timeout,
-        impersonate: str = "chrome",
-        proxy: Optional[str] = settings.proxy_url,
-        follow_redirects: bool = True,
-    ) -> AsyncSession:
-        """Create an async session using the available HTTP client.
 
-        Prefers curl_cffi if available, falls back to httpx.
-        """
-        if CURL_CFFI_AVAILABLE:
-            logger.debug("Using curl_cffi as HTTP client")
-            return CurlAsyncSessionWrapper(
-                timeout=timeout,
-                impersonate=impersonate,
-                proxy=proxy,
-                follow_redirects=follow_redirects,
-            )
-        else:
-            logger.debug("Using httpx as HTTP client (curl_cffi not available)")
-            return HttpxAsyncSession(
-                timeout=timeout,
-                impersonate=impersonate,
-                proxy=proxy,
-                follow_redirects=follow_redirects,
-            )
+def create_session(
+    timeout: int = settings.request_timeout,
+    impersonate: str = "chrome",
+    proxy: Optional[str] = settings.proxy_url,
+    follow_redirects: bool = True,
+) -> AsyncSession:
+    """Create an async session using the available HTTP client.
+
+    Prefers rnet if available, then curl_cffi, falls back to httpx.
+    """
+    if RNET_AVAILABLE:
+        logger.debug("Using rnet as HTTP client")
+        return RnetAsyncSession(
+            timeout=timeout,
+            impersonate=impersonate,
+            proxy=proxy,
+            follow_redirects=follow_redirects,
+        )
+    elif CURL_CFFI_AVAILABLE:
+        logger.debug("Using curl_cffi as HTTP client")
+        return CurlAsyncSessionWrapper(
+            timeout=timeout,
+            impersonate=impersonate,
+            proxy=proxy,
+            follow_redirects=follow_redirects,
+        )
+    else:
+        logger.debug("Using httpx as HTTP client (rnet and curl_cffi not available)")
+        return HttpxAsyncSession(
+            timeout=timeout,
+            impersonate=impersonate,
+            proxy=proxy,
+            follow_redirects=follow_redirects,
+        )
 
 
 async def download_image(url: str, timeout: int = 30) -> Tuple[bytes, str]:
@@ -416,7 +581,9 @@ async def download_image(url: str, timeout: int = 30) -> Tuple[bytes, str]:
 
 
 # Export the appropriate exception class
-if CURL_CFFI_AVAILABLE:
+if RNET_AVAILABLE:
+    RequestException = RnetRequestError
+elif CURL_CFFI_AVAILABLE:
     RequestException = CurlRequestException
 else:
     RequestException = httpx.RequestError
