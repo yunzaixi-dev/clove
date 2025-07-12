@@ -4,7 +4,7 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Install clove-proxy from PyPI
-RUN pip install --no-cache-dir "clove-proxy[curl]"
+RUN pip install --no-cache-dir "clove-proxy[rnet]"
 
 # Environment variables
 ENV NO_FILESYSTEM_MODE=true
