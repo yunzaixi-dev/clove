@@ -29,7 +29,7 @@ Make sure you have Python 3.13 or higher on your computer
 ### 2. Install Clove
 
 ```bash
-pip install "clove-proxy[curl]"
+pip install "clove-proxy[rnet]"
 ```
 
 ### 3. Launch!

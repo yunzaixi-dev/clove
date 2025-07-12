@@ -29,7 +29,7 @@ Clove 是一个让你能够通过标准 Claude API 访问 Claude.ai 的反向代
 ### 2. 安装 Clove
 
 ```bash
-pip install "clove-proxy[curl]"
+pip install "clove-proxy[rnet]"
 ```
 
 ### 3. 启动！
