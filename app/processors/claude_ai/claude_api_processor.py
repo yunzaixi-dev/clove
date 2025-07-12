@@ -164,13 +164,13 @@ class ClaudeAPIProcessor(BaseProcessor):
         )
         system_message = TextContent(type="text", text=system_message_text)
 
-        if isinstance(request.system, str):
+        if isinstance(request.system, str) and request.system:
             request.system = [
                 system_message,
                 TextContent(type="text", text=request.system),
             ]
-        elif isinstance(request.system, list):
-            if request.system and request.system[0].text == system_message_text:
+        elif isinstance(request.system, list) and request.system:
+            if request.system[0].text == system_message_text:
                 logger.debug("System message already exists, skipping injection.")
             else:
                 request.system = [system_message] + request.system
