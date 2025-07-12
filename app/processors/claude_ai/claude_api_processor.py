@@ -12,6 +12,7 @@ from app.models.claude import TextContent
 from app.processors.base import BaseProcessor
 from app.processors.claude_ai import ClaudeAIContext
 from app.services.account import account_manager
+from app.services.cache import cache_service
 from app.core.exceptions import (
     ClaudeHttpError,
     ClaudeRateLimitedError,
@@ -62,15 +63,34 @@ class ClaudeAPIProcessor(BaseProcessor):
             )
             return context
 
+        self._insert_system_message(context)
+
         try:
-            account = await account_manager.get_account_for_oauth(
-                is_max=True
-                if (context.messages_api_request.model in settings.max_models)
-                else None
+            # First try to get account from cache service
+            cached_account_id, checkpoints = cache_service.process_messages(
+                context.messages_api_request.model,
+                context.messages_api_request.messages,
+                context.messages_api_request.system,
             )
 
+            account = None
+            if cached_account_id:
+                account = await account_manager.get_account_by_id(cached_account_id)
+                if account:
+                    logger.info(f"Using cached account: {cached_account_id[:8]}...")
+
+            # If no cached account or account not available, get a new one
+            if not account:
+                account = await account_manager.get_account_for_oauth(
+                    is_max=True
+                    if (context.messages_api_request.model in settings.max_models)
+                    else None
+                )
+
             with account:
-                request_json = self._prepare_request_json(context)
+                request_json = context.messages_api_request.model_dump_json(
+                    exclude_none=True
+                )
                 headers = self._prepare_headers(account.oauth_token.access_token)
 
                 session = create_session(
@@ -149,13 +169,20 @@ class ClaudeAPIProcessor(BaseProcessor):
                 context.metadata["stop_pipeline"] = True
                 logger.info("Successfully processed request via Claude API")
 
+                # Store checkpoints in cache service after successful request
+                if checkpoints and account:
+                    cache_service.add_checkpoints(
+                        checkpoints, account.organization_uuid
+                    )
+
         except (NoAccountsAvailableError, InvalidModelNameError):
             logger.debug("No accounts available for Claude API, continuing pipeline")
 
         return context
 
-    def _prepare_request_json(self, context: ClaudeAIContext) -> str:
-        """Prepare request json with system message injection."""
+    def _insert_system_message(self, context: ClaudeAIContext) -> None:
+        """Insert system message into the request."""
+
         request = context.messages_api_request
 
         # Handle system field
@@ -176,8 +203,6 @@ class ClaudeAPIProcessor(BaseProcessor):
                 request.system = [system_message] + request.system
         else:
             request.system = [system_message]
-
-        return request.model_dump_json(exclude_none=True)
 
     def _prepare_headers(self, access_token: str) -> Dict[str, str]:
         """Prepare headers for Claude API request."""

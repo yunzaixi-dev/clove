@@ -32,17 +32,34 @@ class FileImageSource(BaseModel):
     file_uuid: str = Field(..., description="UUID of the uploaded file")
 
 
+# Web search result
+class WebSearchResult(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    type: Literal["web_search_result"]
+    title: str
+    url: str
+    encrypted_content: str
+    page_age: Optional[str] = None
+
+
+# Cache control
+class CacheControl(BaseModel):
+    type: Literal["ephemeral"]
+
+
 # Content types
 class TextContent(BaseModel):
     model_config = ConfigDict(extra="allow")
     type: Literal["text"]
     text: str
+    cache_control: Optional[CacheControl] = None
 
 
 class ImageContent(BaseModel):
     model_config = ConfigDict(extra="allow")
     type: Literal["image"]
     source: Base64ImageSource | URLImageSource | FileImageSource
+    cache_control: Optional[CacheControl] = None
 
 
 class ThinkingContent(BaseModel):
@@ -57,6 +74,7 @@ class ToolUseContent(BaseModel):
     id: str
     name: str
     input: Dict[str, Any]
+    cache_control: Optional[CacheControl] = None
 
 
 class ToolResultContent(BaseModel):
@@ -65,6 +83,7 @@ class ToolResultContent(BaseModel):
     tool_use_id: str
     content: str | List[TextContent | ImageContent]
     is_error: Optional[bool] = False
+    cache_control: Optional[CacheControl] = None
 
 
 class ServerToolUseContent(BaseModel):
@@ -73,15 +92,7 @@ class ServerToolUseContent(BaseModel):
     id: str
     name: str
     input: Dict[str, Any]
-
-
-class WebSearchResult(BaseModel):
-    model_config = ConfigDict(extra="allow")
-    type: Literal["web_search_result"]
-    title: str
-    url: str
-    encrypted_content: str
-    page_age: Optional[str] = None
+    cache_control: Optional[CacheControl] = None
 
 
 class WebSearchToolResultContent(BaseModel):
@@ -89,6 +100,7 @@ class WebSearchToolResultContent(BaseModel):
     type: Literal["web_search_tool_result"]
     tool_use_id: str
     content: List[WebSearchResult]
+    cache_control: Optional[CacheControl] = None
 
 
 ContentBlock = Union[
