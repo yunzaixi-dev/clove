@@ -26,7 +26,6 @@ dependencies = [
     "loguru>=0.7.3",
     "pydantic>=2.11.7",
     "pydantic-settings>=2.10.1",
-    "rnet>=2.3.9",
     "tenacity>=9.1.2",
     "tiktoken>=0.9.0",
     "uvicorn>=0.35.0",
@@ -43,6 +42,9 @@ clove = "app.main:main"
 [project.optional-dependencies]
 curl = [
     "curl-cffi>=0.11.4",
+]
+rnet = [
+    "rnet>=2.3.9",
 ]
 dev = [
     "build>=1.0.0",
