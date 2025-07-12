@@ -327,7 +327,7 @@ if RNET_AVAILABLE:
 
             self._client = RnetClient(
                 impersonate=rnet_impersonate,
-                timeout=timeout,
+                connect_timeout=timeout,
                 proxies=proxies,
                 allow_redirects=follow_redirects,
             )
