@@ -28,7 +28,7 @@ class ClaudeWebClient:
     def __init__(self, account: Account):
         self.account = account
         self.session: Optional[AsyncSession] = None
-        self.endpoint = settings.claude_ai_url.encoded_string()
+        self.endpoint = settings.claude_ai_url.encoded_string().rstrip("/")
 
     async def initialize(self):
         """Initialize the client session."""

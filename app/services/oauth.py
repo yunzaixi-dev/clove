@@ -40,7 +40,7 @@ class OAuthAuthenticator:
 
     def _build_headers(self, cookie: str) -> Dict[str, str]:
         """Build request headers."""
-        claude_endpoint = settings.claude_ai_url.encoded_string()
+        claude_endpoint = settings.claude_ai_url.encoded_string().rstrip("/")
 
         return {
             "Accept": "application/json",
@@ -80,7 +80,7 @@ class OAuthAuthenticator:
 
     async def get_organization_info(self, cookie: str) -> Tuple[str, List[str]]:
         """Get organization UUID and capabilities."""
-        url = f"{settings.claude_ai_url.encoded_string()}/api/organizations"
+        url = f"{settings.claude_ai_url.encoded_string().rstrip('/')}/api/organizations"
         headers = self._build_headers(cookie)
 
         try:

@@ -27,7 +27,7 @@ class ClaudeAPIProcessor(BaseProcessor):
 
     def __init__(self):
         self.messages_api_url = (
-            settings.claude_api_baseurl.encoded_string() + "/v1/messages"
+            settings.claude_api_baseurl.encoded_string().rstrip("/") + "/v1/messages"
         )
 
     async def _request_messages_api(
