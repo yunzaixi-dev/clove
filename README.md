@@ -161,13 +161,14 @@ COOKIES=sessionKey=your-session-key
 import anthropic
 
 client = anthropic.Anthropic(
-    base_url="http://localhost:5201/v1",
+    base_url="http://localhost:5201",
     api_key="your-api-key"  # 在管理界面创建
 )
 
 response = client.messages.create(
     model="claude-opus-4-20250514",
-    messages=[{"role": "user", "content": "Hello, Claude!"}]
+    messages=[{"role": "user", "content": "Hello, Claude!"}],
+    max_tokens=1024,
 )
 ```
 
