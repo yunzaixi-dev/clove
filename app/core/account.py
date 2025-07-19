@@ -3,7 +3,11 @@ from enum import Enum
 from datetime import datetime
 from dataclasses import dataclass
 
-from app.core.exceptions import ClaudeRateLimitedError, OrganizationDisabledError
+from app.core.exceptions import (
+    ClaudeRateLimitedError,
+    OAuthAuthenticationNotAllowedError,
+    OrganizationDisabledError,
+)
 
 
 class AccountStatus(str, Enum):
@@ -82,6 +86,15 @@ class Account:
             exc_val, OrganizationDisabledError
         ):
             self.status = AccountStatus.INVALID
+            self.save()
+
+        if exc_type is OAuthAuthenticationNotAllowedError and isinstance(
+            exc_val, OAuthAuthenticationNotAllowedError
+        ):
+            if self.auth_type == AuthType.BOTH:
+                self.auth_type = AuthType.COOKIE_ONLY
+            else:
+                self.status = AccountStatus.INVALID
             self.save()
 
         return False

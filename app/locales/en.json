@@ -10,7 +10,8 @@
   "oauthService": {
     "oauthExchangeError": "Failed to exchange authorization code for tokens.",
     "organizationInfoError": "Failed to get organization Info: {reason}",
-    "cookieAuthorizationError": "Failed to authorize with cookie: {reason}"
+    "cookieAuthorizationError": "Failed to authorize with cookie: {reason}",
+    "oauthAuthenticationNotAllowed": "OAuth authentication is not allowed for this organization. Only Pro and Max accounts support OAuth authentication."
   },
   "claudeClient": {
     "claudeRateLimited": "Claude AI rate limit exceeded. Please try again after {resets_at}.",

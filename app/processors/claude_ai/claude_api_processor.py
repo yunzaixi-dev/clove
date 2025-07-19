@@ -18,6 +18,7 @@ from app.core.exceptions import (
     ClaudeRateLimitedError,
     InvalidModelNameError,
     NoAccountsAvailableError,
+    OAuthAuthenticationNotAllowedError,
 )
 from app.core.config import settings
 
@@ -133,6 +134,13 @@ class ClaudeAPIProcessor(BaseProcessor):
                         == "system: Invalid model name"
                     ):
                         raise InvalidModelNameError(context.messages_api_request.model)
+
+                    if (
+                        response.status_code == 401
+                        and error_data.get("error", {}).get("message")
+                        == "OAuth authentication is currently not allowed for this organization."
+                    ):
+                        raise OAuthAuthenticationNotAllowedError()
 
                     logger.error(
                         f"Claude API error: {response.status_code} - {error_data}"

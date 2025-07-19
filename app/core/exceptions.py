@@ -65,6 +65,7 @@ class NoAccountsAvailableError(AppError):
             message_key="accountManager.noAccountsAvailable",
             status_code=503,
             context=context,
+            retryable=True,
         )
 
 
@@ -137,14 +138,12 @@ class ClaudeHttpError(AppError):
         context: Optional[Dict[str, Any]] = None,
     ):
         _context = context.copy() if context else {}
-        _context.update(
-            {
-                "url": url,
-                "status_code": status_code,
-                "error_type": error_type,
-                "error_message": error_message,
-            }
-        )
+        _context.update({
+            "url": url,
+            "status_code": status_code,
+            "error_type": error_type,
+            "error_message": error_message,
+        })
         super().__init__(
             error_code=503130,
             message_key="claudeClient.httpError",
@@ -234,6 +233,16 @@ class CookieAuthorizationError(AppError):
         )
 
 
+class OAuthAuthenticationNotAllowedError(AppError):
+    def __init__(self, context: Optional[Dict[str, Any]] = None):
+        super().__init__(
+            error_code=400183,
+            message_key="oauthService.oauthAuthenticationNotAllowed",
+            status_code=400,
+            context=context,
+        )
+
+
 class ClaudeStreamingError(AppError):
     def __init__(
         self,
@@ -242,12 +251,10 @@ class ClaudeStreamingError(AppError):
         context: Optional[Dict[str, Any]] = None,
     ):
         _context = context.copy() if context else {}
-        _context.update(
-            {
-                "error_type": error_type,
-                "error_message": error_message,
-            }
-        )
+        _context.update({
+            "error_type": error_type,
+            "error_message": error_message,
+        })
         super().__init__(
             error_code=503500,
             message_key="processors.nonStreamingResponseProcessor.streamingError",
