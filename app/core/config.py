@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Optional, List, Dict, Any
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field, HttpUrl, field_validator
-
+from dotenv import load_dotenv
 
 class Settings(BaseSettings):
     """Application settings with environment variable and JSON config support."""
@@ -43,14 +43,19 @@ class Settings(BaseSettings):
     @classmethod
     def _json_config_settings(cls) -> Dict[str, Any]:
         """Load settings from JSON config file in data_folder."""
+
         # Check if NO_FILESYSTEM_MODE is enabled
         if os.environ.get("NO_FILESYSTEM_MODE", "").lower() in ("true", "1", "yes"):
             return {}
+
+        # Load .env file to ensure environment variables are available
+        load_dotenv()
 
         # First get data_folder from env or default
         data_folder = os.environ.get(
             "DATA_FOLDER", str(Path.home() / ".clove" / "data")
         )
+
         config_path = os.path.join(data_folder, "config.json")
 
         if os.path.exists(config_path):
