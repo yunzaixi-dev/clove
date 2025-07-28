@@ -13,6 +13,7 @@ from app.core.http_client import (
 
 from app.core.config import settings
 from app.core.exceptions import (
+    ClaudeAuthenticationError,
     ClaudeRateLimitedError,
     CloudflareBlockedError,
     OrganizationDisabledError,
@@ -103,6 +104,9 @@ class ClaudeWebClient:
                 and error_message == "This organization has been disabled."
             ):
                 raise OrganizationDisabledError()
+
+            if response.status_code == 403 and error_message == "Invalid authorization":
+                raise ClaudeAuthenticationError()
 
             if response.status_code == 429:
                 try:

@@ -4,6 +4,7 @@ from datetime import datetime
 from dataclasses import dataclass
 
 from app.core.exceptions import (
+    ClaudeAuthenticationError,
     ClaudeRateLimitedError,
     OAuthAuthenticationNotAllowedError,
     OrganizationDisabledError,
@@ -80,6 +81,12 @@ class Account:
         ):
             self.status = AccountStatus.RATE_LIMITED
             self.resets_at = exc_val.resets_at
+            self.save()
+
+        if exc_type is ClaudeAuthenticationError and isinstance(
+            exc_val, ClaudeAuthenticationError
+        ):
+            self.status = AccountStatus.INVALID
             self.save()
 
         if exc_type is OrganizationDisabledError and isinstance(
