@@ -20,6 +20,10 @@ def register_static_routes(app: FastAPI):
         @app.get("/{full_path:path}")
         async def serve_spa(full_path: str):
             """Serve index.html for all non-API routes (SPA support)."""
+            # Exclude API routes from being served by the SPA
+            if full_path.startswith("v1"):
+                raise HTTPException(status_code=404, detail="API route not found")
+
             index_path = settings.static_folder / "index.html"
             if index_path.exists():
                 return FileResponse(str(index_path))
