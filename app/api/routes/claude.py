@@ -18,6 +18,24 @@ from app.utils.retry import is_retryable_error, log_before_sleep
 router = APIRouter()
 
 
+@router.get("/models", response_model=None)
+async def list_models(_: AuthDep) -> JSONResponse:
+    """Lists the currently available models."""
+    return JSONResponse(
+        content={
+            "object": "list",
+            "data": [
+                {
+                    "id": "claude-4-sonnet",
+                    "object": "model",
+                    "created": 1709222400,
+                    "owned_by": "anthropic",
+                },
+            ],
+        }
+    )
+
+
 @router.post("/messages", response_model=None)
 @retry(
     retry=retry_if_exception(is_retryable_error),
